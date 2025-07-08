@@ -1,0 +1,35 @@
+package com.empOnboarding.api.utils;
+
+public enum Constants {
+	SUCCESS(true), FAILURE(false), USER_LOGIN("User Login"), USER_LOGOUT("User Logout"), LOGIN_SUCCESS("Login Success"),
+	INVALID_USER("Invalid user"), INVALID_PASSWORD("Invalid Password"), EXCEPTION_MAIL_SUBJECT("Employee Onboarding API Exception"),
+	ENVIRONMENT("Environment : "), USER_AGENT("Api-User-Agent"), EXCEPTION("\n\nException"), DATA_INSERT("Data Insert"),DATA_UPDATE("Data Update");
+
+	public static final String Y = "Y";
+	public static final String N = "N";
+	public static final String USER_MANAGEMENT = "User Management";
+	public static final String AUDIT_ADD_DELIMITER = "[added]<#emp#>";
+	public static final String AUDIT_REMOVE_DELIMITER = "[removed]<#emp#>";
+
+
+	private String value;
+
+	Constants(String values) {
+		this.value = values;
+	}
+
+	public String getValue() {
+		return value;
+	}
+
+	private boolean isStatus;
+
+	private Constants(boolean isStatus) {
+		this.isStatus = isStatus;
+	}
+
+	public boolean isStatus() {
+		return this.isStatus;
+
+	}
+}
