@@ -18,6 +18,6 @@ WORKDIR /app
 # Copy the JAR file from the build stage to the final image
 COPY --from=build /app/target/onboarding-app-backend-*.jar /app/onboarding-app-backend.jar
 # Expose the application port
-EXPOSE 1083
+EXPOSE 8084
 # Set the entry point to run the JAR file
 ENTRYPOINT ["java", "-jar", "onboarding-app-backend.jar"]
