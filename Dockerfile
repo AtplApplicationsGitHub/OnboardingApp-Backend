@@ -1,5 +1,5 @@
-# Use an openjdk image for runtime
-FROM openjdk:17-jre-slim
+# Use an openjdk image for runtime (using a specific version tag)
+FROM openjdk:17-jdk-slim
 # Set working directory in the container
 WORKDIR /app
 # Copy the built JAR file from Jenkins (assuming it's in the workspace)
