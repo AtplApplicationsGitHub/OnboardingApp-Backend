@@ -73,7 +73,7 @@ public class AuthController {
 					jwt = tokenProvider.generateToken(user.get().getId());
 					response.setAccessToken(jwt);
 					response.setSuccess(Constants.SUCCESS.isStatus());
-					response.setUserId(user.get().getId());
+					response.setUser(user.get());
 					response.setMessage(Constants.LOGIN_SUCCESS.getValue());
 					request.getSession().setAttribute("authToken", jwt);
 					request.getSession().setAttribute("id", user.get().getId().toString());

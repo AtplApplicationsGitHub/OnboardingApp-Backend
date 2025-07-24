@@ -2,7 +2,9 @@ package com.empOnboarding.api.controller;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.json.simple.JSONObject;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,5 +39,10 @@ public class UserManagementController {
 			return false;
 		}
 	}
+	
+	@PostMapping("/findFilteredPatient/{role}/{pageNo}")
+	public JSONObject patientService(@PathVariable String role,@PathVariable String pageNo) throws Exception {
+        return userManagementService.filteredUsers(pageNo,role);
+    }
 	
 }

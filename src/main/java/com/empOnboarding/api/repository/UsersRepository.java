@@ -3,6 +3,8 @@ package com.empOnboarding.api.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -15,5 +17,9 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
 	@Query(value ="SELECT u.* FROM users u \r\n" + 
 			"WHERE u.active_flag =:y AND u.delete_flag =:n", nativeQuery = true)
 	List<Users> loadAllActiveUsers(String y, String n);
+
+	Page<Users> findAllByRoleOrderByCreatedTimeDesc(String role, Pageable page);
+
+	Page<Users> findAllByOrderByCreatedTimeDesc(Pageable pageable);
 	
 }

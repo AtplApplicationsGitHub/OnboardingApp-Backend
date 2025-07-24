@@ -2,13 +2,20 @@ package com.empOnboarding.api.service;
 
 import java.io.IOException;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import org.json.simple.JSONObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.empOnboarding.api.dto.CommonDTO;
 import com.empOnboarding.api.dto.UserPrincipalDTO;
+import com.empOnboarding.api.dto.UsersDTO;
 import com.empOnboarding.api.entity.Users;
 import com.empOnboarding.api.repository.UsersRepository;
 import com.empOnboarding.api.utils.CommonUtls;
@@ -63,5 +70,40 @@ public class UserManagementService {
 		}
 	}
 	
+	public UsersDTO populateUser(Users user) {
+		UsersDTO userDto = new UsersDTO();
+		userDto.setId(user.getId().toString());
+		userDto.setName(user.getName());
+		userDto.setEmail(user.getEmail());
+		userDto.setRole(user.getRole());
+		userDto.setActiveFlag(user.getActiveFlag());
+		return userDto;
+	}
+	
+	public UsersDTO findById(Long id) {
+		UsersDTO usersDTO = null;
+		Optional<Users> isPatient = usersRepository.findById(id);
+		if (isPatient.isPresent()) {
+			usersDTO = populateUser(isPatient.get());
+		}
+		return usersDTO;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public JSONObject filteredUsers(String pageNo,String role) {
+		JSONObject json = new JSONObject();
+		Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
+		List<UsersDTO> list;
+		Page<Users> userList = null;
+		if(!CommonUtls.isCompletlyEmpty(role)) {
+			userList = usersRepository.findAllByRoleOrderByCreatedTimeDesc(role,pageable);
+		}else {
+			userList = usersRepository.findAllByOrderByCreatedTimeDesc(pageable);
+		}
+		list = userList.stream().map(this::populateUser).collect(Collectors.toList());
+		json.put("commonListDto", list);
+		json.put("totalElements", userList.getTotalElements());
+		return json;
+	}
 	
 }

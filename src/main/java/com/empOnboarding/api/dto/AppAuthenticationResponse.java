@@ -1,5 +1,7 @@
 package com.empOnboarding.api.dto;
 
+import com.empOnboarding.api.entity.Users;
+
 import lombok.Generated;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,7 +13,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class AppAuthenticationResponse {
     private String accessToken;
-    private long userId;
+    private Users user;
     private String userName;
     private boolean success;
     private String message;
