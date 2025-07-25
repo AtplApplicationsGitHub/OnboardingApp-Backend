@@ -11,7 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class AppAuthenticationResponse {
     private String accessToken;
-    private long userId;
+    private String userId;
     private String userName;
     private boolean success;
     private String message;
