@@ -124,5 +124,15 @@ public class CommonUtls {
 			return "";
 		}
 	}
+	
+	public static String datetoString(Date date, String dateFormat) {
+		String result;
+		try {
+			result = new SimpleDateFormat(dateFormat).format(date);
+		} catch (Exception e) {
+			return date.toString();
+		}
+		return result;
+	}
 
 }
