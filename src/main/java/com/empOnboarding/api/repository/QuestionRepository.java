@@ -1,12 +1,14 @@
 package com.empOnboarding.api.repository;
 
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.empOnboarding.api.entity.Groups;
+import com.empOnboarding.api.entity.Questions;
 
-public interface GroupRepository extends JpaRepository<Groups, Long> {
+public interface QuestionRepository extends JpaRepository<Questions, Long> {
 
-	Page<Groups> findAllByOrderByCreatedTimeDesc(Pageable pageable);
+	Page<Questions> findAllByGroupIdId(Long id, Pageable page);
+	
 }

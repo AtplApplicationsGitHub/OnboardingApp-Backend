@@ -23,47 +23,25 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "groups")
+@Table(name = "level_questions")
 @AllArgsConstructor
 @NoArgsConstructor
-public class Groups implements java.io.Serializable {
-
+public class QuestionLevel implements java.io.Serializable {
+	
 	private static final long serialVersionUID = 1L;
 	@Id
 	@GeneratedValue(strategy = IDENTITY)
 	@Column(name = "id", unique = true, nullable = false)
 	private Long id;
 
-	@Column(name = "name")
-	private String name;
-
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "primary_group_lead", referencedColumnName = "id")
-	private Users pgLead;
-
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "escalation_group_lead", referencedColumnName = "id")
-	private Users egLead;
+	@Column(name = "level")
+	private String level;
 	
-	@Temporal(TemporalType.TIMESTAMP)
-	@Column(name = "updated_time", nullable = true, length = 19)
-	private Date updatedTime;
-
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "question_id", referencedColumnName = "id")
+	private Questions questionId;
+	
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "created_time", nullable = true, length = 19)
 	private Date createdTime;
-	
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "updated_by", referencedColumnName = "id")
-	private Users updatedBy;
-	
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "created_by", referencedColumnName = "id")
-	private Users createdBy;
-	
-	public Groups(Long id) {
-		this.id = id;
-	}
-
-
 }

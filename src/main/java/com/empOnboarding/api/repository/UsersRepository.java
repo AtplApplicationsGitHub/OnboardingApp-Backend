@@ -39,5 +39,7 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
 		                            @Param("activeFlag") String activeFlag,
 		                            Pageable pageable);
 
+	List<Users> findAllByRole(String string);
+
 	
 }
