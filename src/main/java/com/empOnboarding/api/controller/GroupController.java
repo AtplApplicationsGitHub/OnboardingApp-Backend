@@ -79,4 +79,8 @@ public class GroupController {
 		groupService.deleteGroup(id, dto);
 	}
 
+	@GetMapping("/countGroup")
+	public long countGroup() {
+		return groupService.totalGroupCount();
+	}
 }

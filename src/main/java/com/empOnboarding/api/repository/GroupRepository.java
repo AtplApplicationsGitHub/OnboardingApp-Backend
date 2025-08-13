@@ -8,5 +8,5 @@ import com.empOnboarding.api.entity.Groups;
 
 public interface GroupRepository extends JpaRepository<Groups, Long> {
 
-	Page<Groups> findAllByOrderByCreatedTimeDesc(Pageable pageable);
+	Page<Groups> findAllByOrderByCreatedTimeAsc(Pageable pageable);
 }

@@ -21,6 +21,7 @@ import com.empOnboarding.api.entity.Groups;
 import com.empOnboarding.api.entity.Users;
 import com.empOnboarding.api.repository.ConstantRepository;
 import com.empOnboarding.api.repository.GroupRepository;
+import com.empOnboarding.api.repository.QuestionRepository;
 import com.empOnboarding.api.repository.UsersRepository;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
@@ -30,6 +31,8 @@ import com.empOnboarding.api.utils.Constants;
 public class GroupService {
 	
 	private GroupRepository groupRepository;
+	
+	private QuestionRepository questionRepository;
 		
 	private AuditTrailService auditTrailService;
 	
@@ -40,17 +43,20 @@ public class GroupService {
 	private UsersRepository usersRepository;
 	
 	public GroupService(GroupRepository groupRepository, AuditTrailService auditTrailService,
-			ConstantRepository constantRepository, MailerService mailerService,UsersRepository usersRepository) {
+			ConstantRepository constantRepository, MailerService mailerService,UsersRepository usersRepository,
+			QuestionRepository questionRepository) {
 		this.groupRepository = groupRepository;
 		this.auditTrailService = auditTrailService;
 		this.constantRepository = constantRepository;
 		this.mailerService = mailerService;
 		this.usersRepository = usersRepository;
+		this.questionRepository = questionRepository;
 	}
 	
 	
 	public Boolean createGroup(GroupsDTO groupDto, CommonDTO dto, UserPrincipal user) throws IOException {
-		Groups group = new Groups(null, groupDto.getName(),new Users(Long.valueOf(groupDto.getPgLead())),new Users(Long.valueOf(groupDto.getEgLead())),new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
+		Users egLead = !CommonUtls.isCompletlyEmpty(groupDto.getEgLead())? new Users(Long.valueOf(groupDto.getEgLead())) : null;
+		Groups group = new Groups(null, groupDto.getName(),new Users(Long.valueOf(groupDto.getPgLead())),egLead,new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
 		groupRepository.save(group);
 		dto.setSystemRemarks(group.toString());
 		dto.setModuleId(group.getName());
@@ -60,11 +66,16 @@ public class GroupService {
 	
 	public GroupsDTO populateGroup(Groups group) {
 		GroupsDTO gDto = new GroupsDTO();
+		Constant c = constantRepository.findByConstant("DateFormat");
+		Long quesCount = questionRepository.countByGroupIdId(group.getId());
 		gDto.setId(group.getId().toString());
 		gDto.setName(group.getName());
 		gDto.setPgLead(group.getPgLead().getName());
-		gDto.setEgLead(group.getEgLead().getName());
-		Constant c = constantRepository.findByConstant("DateFormat");
+		gDto.setEgLead(group.getEgLead()!=null?group.getEgLead().getName():"-");
+		gDto.setQuesCount(quesCount);
+		if(quesCount==0L) {
+			gDto.setDeleteFlag(true);
+		}
 		gDto.setCreatedTime(CommonUtls.datetoString(group.getCreatedTime(),c.getConstantValue()));
 		gDto.setUpdatedTime(CommonUtls.datetoString(group.getUpdatedTime(),c.getConstantValue()));
 		return gDto;
@@ -116,7 +127,7 @@ public class GroupService {
 		JSONObject json = new JSONObject();
 		Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
 		List<GroupsDTO> list;
-		Page<Groups> gList = groupRepository.findAllByOrderByCreatedTimeDesc(pageable);
+		Page<Groups> gList = groupRepository.findAllByOrderByCreatedTimeAsc(pageable);
 		list = gList.stream().map(this::populateGroup).collect(Collectors.toList());
 		json.put("commonListDto", list);
 		json.put("totalElements", gList.getTotalElements());
@@ -128,6 +139,10 @@ public class GroupService {
 		List<Users> user = usersRepository.findAllByRole("group_lead");
 		dto = user.stream().map(u -> new DropDownDTO(u.getId(),u.getName(),u.getEmail())).collect(Collectors.toList());
 		return dto;
+	}
+	
+	public long totalGroupCount() {
+		return groupRepository.count();
 	}
 
 }

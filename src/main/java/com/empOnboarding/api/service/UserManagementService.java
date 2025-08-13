@@ -143,5 +143,16 @@ public class UserManagementService {
 		json.put("totalElements", userList.getTotalElements());
 		return json;
 	}
+	
+	public long totalUsers() {
+		return usersRepository.count();
+	}
+	
+	public Boolean emailExists(String email) {
+		boolean result;
+		Optional<Users> userDetails = usersRepository.findByEmail(email);
+		result = userDetails.isPresent();
+		return result;
+	}
 
 }
