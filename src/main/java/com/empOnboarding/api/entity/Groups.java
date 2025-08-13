@@ -42,7 +42,7 @@ public class Groups implements java.io.Serializable {
 	private Users pgLead;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "escalation_group_lead", referencedColumnName = "id")
+	@JoinColumn(name = "escalation_group_lead", referencedColumnName = "id", nullable = true)
 	private Users egLead;
 	
 	@Temporal(TemporalType.TIMESTAMP)

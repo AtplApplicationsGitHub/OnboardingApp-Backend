@@ -19,5 +19,8 @@ public class GroupsDTO {
 	private String egLead;
 	private String createdTime;
 	private String updatedTime;
+	private long quesCount;
+	private Boolean deleteFlag;
+
 	
 }

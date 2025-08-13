@@ -34,4 +34,6 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
 
 	List<Users> findAllByRole(String string);
 
+	Optional<Users> findByEmail(String email);
+
 }

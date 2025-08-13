@@ -67,7 +67,7 @@ public class EmployeeController {
 	}
 
 	
-	@DeleteMapping("/deleteGroup/{id}")
+	@DeleteMapping("/deleteEmployee/{id}")
 	public void deleteGroup(@PathVariable Long id, CommonDTO dto) throws Exception {
 		employeeService.deleteEmployee(id, dto);
 	}

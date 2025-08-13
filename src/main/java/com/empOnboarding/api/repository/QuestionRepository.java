@@ -9,6 +9,8 @@ import com.empOnboarding.api.entity.Questions;
 
 public interface QuestionRepository extends JpaRepository<Questions, Long> {
 
-	Page<Questions> findAllByGroupIdId(Long id, Pageable page);
+	Page<Questions> findAllByGroupIdIdOrderByCreatedTimeAsc(Long id, Pageable page);
+
+	long countByGroupIdId(Long id);
 	
 }

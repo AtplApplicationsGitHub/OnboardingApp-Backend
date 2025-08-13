@@ -70,6 +70,7 @@ public class QuestionService {
 		qDto.setText(ques.getText());
 		qDto.setResponse(ques.getResponse());
 		qDto.setGroupId(ques.getGroupId().getId().toString());
+		
 		qDto.setComplainceDay(ques.getComplainceDay());
 		List<String> level = new ArrayList<String>();
 		for (QuestionLevel qLevel : ques.getQuestionLevels()) {
@@ -87,7 +88,7 @@ public class QuestionService {
 		JSONObject json = new JSONObject();
 		Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
 		List<QuestionsDTO> list;
-		Page<Questions> qList = questionRepository.findAllByGroupIdId(groupId,pageable);
+		Page<Questions> qList = questionRepository.findAllByGroupIdIdOrderByCreatedTimeAsc(groupId,pageable);
 		list = qList.stream().map(this::populateQuestion).collect(Collectors.toList());
 		json.put("commonListDto", list);
 		json.put("totalElements", qList.getTotalElements());
@@ -130,5 +131,13 @@ public class QuestionService {
 			mailerService.sendEmailOnException(e);
 		}
 	}
+	
+	public long countQuestions() {
+		return questionRepository.count();
+	}
 
+	
+	public long countQuestionsByGroup(Long id) {
+		return questionRepository.countByGroupIdId(id);
+	}
 }

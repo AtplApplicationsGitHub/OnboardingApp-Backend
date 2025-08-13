@@ -63,4 +63,14 @@ public class UserManagementController {
 	public UsersDTO findDataById(@PathVariable Long id) {
 		return userManagementService.findById(id);
 	}
+	
+	@GetMapping("/countUser")
+	public long countUser() {
+		return userManagementService.totalUsers();
+	}
+	
+	@GetMapping("/emailExists/{email}")
+	public Boolean emailExists(@PathVariable String email) {
+		return userManagementService.emailExists(email);
+	}
 }
