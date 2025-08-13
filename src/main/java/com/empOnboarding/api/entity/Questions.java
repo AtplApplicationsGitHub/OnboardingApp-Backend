@@ -51,7 +51,7 @@ public class Questions implements java.io.Serializable {
 	@JoinColumn(name = "group_id", referencedColumnName = "id")
 	private Groups groupId;
 	
-	@OneToMany(fetch = FetchType.LAZY, mappedBy = "questionId", cascade = CascadeType.ALL)
+	@OneToMany(fetch = FetchType.LAZY, mappedBy = "questionId", cascade = CascadeType.ALL, orphanRemoval = true)
 	private Set<QuestionLevel> questionLevels = new HashSet<>(0);
 	
 	@Temporal(TemporalType.TIMESTAMP)
@@ -70,4 +70,15 @@ public class Questions implements java.io.Serializable {
 	@JoinColumn(name = "created_by", referencedColumnName = "id")
 	private Users createdBy;
 	
+	public void setQuestionLevels(Set<QuestionLevel> levels) {
+	    this.questionLevels.forEach(ql -> ql.setQuestionId(null));
+	    this.questionLevels.clear();
+	    if (levels != null) {
+	        levels.forEach(this::addQuestionLevel);
+	    }
+	}
+	public void addQuestionLevel(QuestionLevel ql) {
+	    ql.setQuestionId(this);
+	    this.questionLevels.add(ql);
+	}
 }

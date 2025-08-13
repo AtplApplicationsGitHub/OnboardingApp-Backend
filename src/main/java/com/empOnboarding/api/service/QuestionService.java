@@ -50,7 +50,7 @@ public class QuestionService {
 	
 	public Boolean createQuestion(QuestionsDTO qDto, CommonDTO dto, UserPrincipal user) throws IOException {
 		Set<QuestionLevel> quesLevel = new HashSet<>();
-		Questions ques = new Questions(null, qDto.getText(), qDto.getResponse() ,qDto.getComplainceDay(),new Groups(Long.valueOf(qDto.getGroupId())),
+		Questions ques = new Questions(null, qDto.getText(), qDto.getComplainceDay(), qDto.getResponse() ,new Groups(Long.valueOf(qDto.getGroupId())),
 				quesLevel,new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
 		if (qDto.getQuestionLevel() != null) {
 			for (String level : qDto.getQuestionLevel()) {
@@ -118,6 +118,17 @@ public class QuestionService {
 	        result = true;
 	    }
 	    return result;
+	}
+	
+	public void deleteQuestion(Long id, CommonDTO dto) throws Exception{
+		try {
+			questionRepository.deleteById(id);
+			dto.setModuleId("NA");
+			dto.setSystemRemarks(Constants.QUESTION_DELETE.getValue());
+			auditTrailService.saveAuditTrail(Constants.DATA_DELETE.getValue(), dto);
+		} catch (Exception e) {
+			mailerService.sendEmailOnException(e);
+		}
 	}
 
 }
