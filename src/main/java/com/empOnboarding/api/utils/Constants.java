@@ -4,7 +4,7 @@ public enum Constants {
 	SUCCESS(true), FAILURE(false), USER_LOGIN("User Login"), USER_LOGOUT("User Logout"), LOGIN_SUCCESS("Login Success"),
 	INVALID_USER("Invalid user"), INVALID_PASSWORD("Invalid Password"), EXCEPTION_MAIL_SUBJECT("Employee Onboarding API Exception"),
 	ENVIRONMENT("Environment : "), USER_AGENT("Api-User-Agent"), EXCEPTION("\n\nException"), DATA_INSERT("Data Insert"),DATA_UPDATE("Data Update"),
-	DATA_DELETE("Data Delete"),GROUP_DELETE("Group has been deleted");
+	DATA_DELETE("Data Delete"),GROUP_DELETE("Group has been deleted"),QUESTION_DELETE("Question has been deleted");
 
 	public static final String Y = "Y";
 	public static final String N = "N";

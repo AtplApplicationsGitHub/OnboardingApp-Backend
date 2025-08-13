@@ -37,7 +37,7 @@ public class QuestionLevel implements java.io.Serializable {
 	@Column(name = "level")
 	private String level;
 	
-	@ManyToOne(fetch = FetchType.LAZY)
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "question_id", referencedColumnName = "id")
 	private Questions questionId;
 	

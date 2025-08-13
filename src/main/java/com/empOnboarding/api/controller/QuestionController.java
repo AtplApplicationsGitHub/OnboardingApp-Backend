@@ -4,6 +4,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.json.simple.JSONObject;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -57,6 +58,11 @@ public class QuestionController {
 		} catch (Exception e) {
 			return false;
 		}
+	}
+	
+	@DeleteMapping("/deleteQuestion/{id}")
+	public void deleteQuestion(@PathVariable Long id, CommonDTO dto) throws Exception {
+		questionService.deleteQuestion(id, dto);
 	}
 
 }
