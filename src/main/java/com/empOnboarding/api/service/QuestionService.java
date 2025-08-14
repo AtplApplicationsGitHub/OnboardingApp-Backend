@@ -1,14 +1,12 @@
 package com.empOnboarding.api.service;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import com.empOnboarding.api.dto.PdfDTO;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,13 +29,13 @@ import com.empOnboarding.api.utils.Constants;
 @Service
 public class QuestionService {
 	
-	private QuestionRepository questionRepository;
+	private final QuestionRepository questionRepository;
 	
-	private AuditTrailService auditTrailService;
+	private final AuditTrailService auditTrailService;
 	
-	private ConstantRepository constantRepository;
+	private final ConstantRepository constantRepository;
 	
-	private MailerService mailerService;
+	private final MailerService mailerService;
 	
 	
 	public QuestionService(QuestionRepository questionRepository,AuditTrailService auditTrailService,
@@ -140,4 +138,5 @@ public class QuestionService {
 	public long countQuestionsByGroup(Long id) {
 		return questionRepository.countByGroupIdId(id);
 	}
+
 }

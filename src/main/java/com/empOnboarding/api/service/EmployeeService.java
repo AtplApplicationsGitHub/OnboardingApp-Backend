@@ -1,13 +1,24 @@
 package com.empOnboarding.api.service;
 
-import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.time.format.DateTimeParseException;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import com.empOnboarding.api.dto.PdfDTO;
+
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFCellStyle;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+
+import org.json.JSONArray;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,112 +35,416 @@ import com.empOnboarding.api.repository.EmployeeRepository;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
 import com.empOnboarding.api.utils.Constants;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EmployeeService {
 
-	private EmployeeRepository employeeRepositrory;
+    private final EmployeeRepository employeeRepositrory;
 
-	private AuditTrailService auditTrailService;
+    private final AuditTrailService auditTrailService;
 
-	private ConstantRepository constantRepository;
+    private final ConstantRepository constantRepository;
 
-	private MailerService mailerService;
+    private final MailerService mailerService;
 
-	public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
-			ConstantRepository constantRepository, MailerService mailerService) {
-		this.employeeRepositrory = employeeRepositrory;
-		this.auditTrailService = auditTrailService;
-		this.constantRepository = constantRepository;
-		this.mailerService = mailerService;
-	}
+    public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
+                           ConstantRepository constantRepository, MailerService mailerService) {
+        this.employeeRepositrory = employeeRepositrory;
+        this.auditTrailService = auditTrailService;
+        this.constantRepository = constantRepository;
+        this.mailerService = mailerService;
+    }
 
-	public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user) throws IOException {
-		Employee emp = new Employee(null, empDto.getName(), empDto.getDepartment(), empDto.getRole(),empDto.getLevel(),
-				empDto.getTotalExperience(),empDto.getPastOrganization(),empDto.getLabAllocation(),empDto.getComplainceDay(),
-				LocalDate.parse(empDto.getDate()),new Date(),new Date(), new Users(user.getId()), new Users(user.getId()));
-		employeeRepositrory.save(emp);
-		dto.setSystemRemarks(emp.toString());
-		dto.setModuleId(emp.getName());
-		auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
-		return true;
-	}
+    public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user){
+        Employee emp = new Employee(null, empDto.getName(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
+                empDto.getTotalExperience(), empDto.getPastOrganization(), empDto.getLabAllocation(), empDto.getComplainceDay(),
+                LocalDate.parse(empDto.getDate()), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
+        employeeRepositrory.save(emp);
+        dto.setSystemRemarks(emp.toString());
+        dto.setModuleId(emp.getName());
+        auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
+        return true;
+    }
 
-	public EmployeeDTO populateEmployee(Employee emp) {
-		EmployeeDTO eDto = new EmployeeDTO();
-		eDto.setId(emp.getId().toString());
-		eDto.setName(emp.getName());
-		eDto.setDepartment(emp.getDepartment());
-		eDto.setRole(emp.getRole());
-		eDto.setLevel(emp.getLevel());
-		eDto.setTotalExperience(emp.getTotalExperience());
-		eDto.setPastOrganization(emp.getPastOrganization());
-		eDto.setLabAllocation(emp.getLabAllocation());
-		Constant c = constantRepository.findByConstant("DateFormat");
-		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
-		String date = emp.getDate().format(formatter);
-		eDto.setDate(date);
-		eDto.setCreatedTime(CommonUtls.datetoString(emp.getCreatedTime(), c.getConstantValue()));
-		eDto.setUpdatedTime(CommonUtls.datetoString(emp.getUpdatedTime(), c.getConstantValue()));
-		return eDto;
-	}
+    public EmployeeDTO populateEmployee(Employee emp) {
+        EmployeeDTO eDto = new EmployeeDTO();
+        eDto.setId(emp.getId().toString());
+        eDto.setName(emp.getName());
+        eDto.setDepartment(emp.getDepartment());
+        eDto.setRole(emp.getRole());
+        eDto.setLevel(emp.getLevel());
+        eDto.setTotalExperience(emp.getTotalExperience());
+        eDto.setPastOrganization(emp.getPastOrganization());
+        eDto.setLabAllocation(emp.getLabAllocation());
+        Constant c = constantRepository.findByConstant("DateFormat");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
+        String date = emp.getDate().format(formatter);
+        eDto.setDate(date);
+        eDto.setCreatedTime(CommonUtls.datetoString(emp.getCreatedTime(), c.getConstantValue()));
+        eDto.setUpdatedTime(CommonUtls.datetoString(emp.getUpdatedTime(), c.getConstantValue()));
+        return eDto;
+    }
 
-	public EmployeeDTO findById(Long id) {
-		EmployeeDTO eDTO = null;
-		Optional<Employee> isEmployee = employeeRepositrory.findById(id);
-		if (isEmployee.isPresent()) {
-			eDTO = populateEmployee(isEmployee.get());
-		}
-		return eDTO;
-	}
+    public EmployeeDTO findById(Long id) {
+        EmployeeDTO eDTO = null;
+        Optional<Employee> isEmployee = employeeRepositrory.findById(id);
+        if (isEmployee.isPresent()) {
+            eDTO = populateEmployee(isEmployee.get());
+        }
+        return eDTO;
+    }
 
-//	public Boolean updateGroup(GroupsDTO gDto, CommonDTO dto, UserPrincipal userp) throws IOException {
-//		Optional<Groups> gOpt = groupRepository.findById(Long.valueOf(gDto.getId()));
-//		Boolean result = false;
-//		if (!gOpt.isPresent()) {
-//			mailerService.sendEmailOnException(null);
-//		} else {
-//			Groups g = gOpt.get();
-//			g.setName(gDto.getName());
-//			g.setPgLead(new Users(Long.valueOf(gDto.getPgLead())));
-//			g.setEgLead(new Users(Long.valueOf(gDto.getEgLead())));
-//			g.setUpdatedTime(new Date());
-//			g.setUpdatedBy(new Users(userp.getId()));
-//			groupRepository.save(g);
-//			dto.setSystemRemarks(g.toString());
-//			dto.setModuleId(g.getName());
-//			auditTrailService.saveAuditTrail(Constants.DATA_UPDATE.getValue(), dto);
-//			result = true;
-//		}
-//		return result;
-//	}
-
-	public void deleteEmployee(Long id, CommonDTO dto) throws Exception {
-		try {
-			employeeRepositrory.deleteById(id);
-			dto.setModuleId("NA");
-			dto.setSystemRemarks(Constants.GROUP_DELETE.getValue());
-			auditTrailService.saveAuditTrail(Constants.DATA_DELETE.getValue(), dto);
-		} catch (Exception e) {
-			mailerService.sendEmailOnException(e);
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	public JSONObject filteredEmployees(String pageNo, String search) {
-		JSONObject json = new JSONObject();
-		Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
-		List<EmployeeDTO> list;
-		Page<Employee> empList = null;
-		if(!CommonUtls.isCompletlyEmpty(search)) {
-			empList = employeeRepositrory.findAllBySearch(search,pageable);
+	public Boolean updateEmployee(EmployeeDTO eDto, CommonDTO dto, UserPrincipal userp)  {
+		Optional<Employee> eOpt = employeeRepositrory.findById(Long.valueOf(eDto.getId()));
+		boolean result = false;
+		if (eOpt.isEmpty()) {
+			mailerService.sendEmailOnException(null);
 		} else {
-			empList = employeeRepositrory.findAllByOrderByCreatedTimeDesc(pageable);
+            Employee e = getEmployee(eDto, userp, eOpt);
+            employeeRepositrory.save(e);
+			dto.setSystemRemarks(e.toString());
+			dto.setModuleId(e.getName());
+			auditTrailService.saveAuditTrail(Constants.DATA_UPDATE.getValue(), dto);
+			result = true;
 		}
-		list = empList.stream().map(this::populateEmployee).collect(Collectors.toList());
-		json.put("commonListDto", list);
-		json.put("totalElements", empList.getTotalElements());
-		return json;
+		return result;
 	}
 
+    private static Employee getEmployee(EmployeeDTO eDto, UserPrincipal userp, Optional<Employee> eOpt) {
+        Employee e = eOpt.get();
+        e.setName(eDto.getName());
+        e.setDepartment(eDto.getDepartment());
+        e.setRole(eDto.getRole());
+        e.setLevel(eDto.getRole());
+        e.setTotalExperience(eDto.getTotalExperience());
+        e.setPastOrganization(eDto.getPastOrganization());
+        e.setLabAllocation(eDto.getLabAllocation());
+        e.setComplainceDay(eDto.getComplainceDay());
+        e.setUpdatedTime(new Date());
+        e.setUpdatedBy(new Users(userp.getId()));
+        return e;
+    }
+
+    public void deleteEmployee(Long id, CommonDTO dto){
+        try {
+            employeeRepositrory.deleteById(id);
+            dto.setModuleId("NA");
+            dto.setSystemRemarks(Constants.GROUP_DELETE.getValue());
+            auditTrailService.saveAuditTrail(Constants.DATA_DELETE.getValue(), dto);
+        } catch (Exception e) {
+            mailerService.sendEmailOnException(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public JSONObject filteredEmployees(String pageNo, String search) {
+        JSONObject json = new JSONObject();
+        Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
+        List<EmployeeDTO> list;
+        Page<Employee> empList;
+        if (!CommonUtls.isCompletlyEmpty(search)) {
+            empList = employeeRepositrory.findAllBySearch(search, pageable);
+        } else {
+            empList = employeeRepositrory.findAllByOrderByCreatedTimeDesc(pageable);
+        }
+        list = empList.stream().map(this::populateEmployee).collect(Collectors.toList());
+        json.put("commonListDto", list);
+        json.put("totalElements", empList.getTotalElements());
+        return json;
+    }
+
+    public PdfDTO generateExcel(CommonDTO dto) throws Exception {
+        String SHEET_NAME = "Add Employee Sample Download";
+        String documentFileName = SHEET_NAME + ".xls";
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        List<String> headers = Arrays.asList("Candidate Name", "DOJ", "Department", "Role", "Level",
+                "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day");
+
+        HSSFWorkbook workbook = new HSSFWorkbook();
+        HSSFCellStyle cellStyle = createCellStyle(workbook);
+
+        HSSFSheet sheet = workbook.createSheet(SHEET_NAME);
+        createHeaderRow(sheet, headers, cellStyle);
+        workbook.write(byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream.toByteArray();
+        workbook.close();
+        PdfDTO excel = new PdfDTO(byteArray, documentFileName);
+        dto.setModuleId(Constants.ADD_EMPLOYEE);
+        dto.setModule(Constants.ADD_EMPLOYEE);
+        dto.setSystemRemarks("Add Employee Excel has been downloaded");
+        auditTrailService.saveAuditTrail(Constants.EXCEL_EXPORT.getValue(), dto);
+        return excel;
+    }
+
+    private void createHeaderRow(HSSFSheet sheet, List<String> headers, HSSFCellStyle cellStyle) {
+        HSSFRow row = sheet.createRow(0);
+        for (int i = 0; i < headers.size(); i++) {
+            HSSFCell cell = row.createCell(i);
+            cell.setCellValue(headers.get(i));
+            cell.setCellStyle(cellStyle);
+        }
+    }
+
+    private HSSFCellStyle createCellStyle(HSSFWorkbook workbook) {
+        HSSFCellStyle cellStyle = workbook.createCellStyle();
+        cellStyle.setBorderTop(BorderStyle.THIN);
+        cellStyle.setBorderBottom(BorderStyle.THIN);
+        cellStyle.setBorderLeft(BorderStyle.THIN);
+        cellStyle.setBorderRight(BorderStyle.THIN);
+        cellStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        return cellStyle;
+    }
+
+    private static final String COL_NAME                = "name";
+    private static final String COL_DEPARTMENT          = "department";
+    private static final String COL_ROLE                = "role";
+    private static final String COL_LEVEL               = "level";
+    private static final String COL_TOTAL_EXPERIENCE    = "total_experience";
+    private static final String COL_PAST_ORGANIZATION   = "past_organization";
+    private static final String COL_LAB_ALLOCATION      = "lab_allocation";
+    private static final String COL_COMPLIANCE_DAY      = "compliance_day";
+    private static final String COL_DATE_OF_JOINING     = "date_of_joining";
+
+    private static final Map<String, String> HEADER_ALIASES = Map.ofEntries(
+            Map.entry("Candidate Name", COL_NAME),
+            Map.entry("name", COL_NAME),
+            Map.entry("DOJ", COL_DATE_OF_JOINING),
+            Map.entry("date_of_joining", COL_DATE_OF_JOINING),
+            Map.entry("Department", COL_DEPARTMENT),
+            Map.entry("department", COL_DEPARTMENT),
+            Map.entry("Role", COL_ROLE),
+            Map.entry("role", COL_ROLE),
+            Map.entry("Level", COL_LEVEL),
+            Map.entry("level", COL_LEVEL),
+            Map.entry("Total Experience", COL_TOTAL_EXPERIENCE),
+            Map.entry("total_experience", COL_TOTAL_EXPERIENCE),
+            Map.entry("Past Organization", COL_PAST_ORGANIZATION),
+            Map.entry("past_organization", COL_PAST_ORGANIZATION),
+            Map.entry("Lab Allocation", COL_LAB_ALLOCATION),
+            Map.entry("lab_allocation", COL_LAB_ALLOCATION),
+            Map.entry("Compliance Day", COL_COMPLIANCE_DAY),
+            Map.entry("compliance_day", COL_COMPLIANCE_DAY)
+
+    );
+
+    private static final List<DateTimeFormatter> DATE_PATTERNS = List.of(
+            DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+            DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+            DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+            DateTimeFormatter.ofPattern("MM/dd/yyyy")
+    );
+
+    @SuppressWarnings("unchecked")
+    @Transactional
+    public JSONObject readExcelFile(XSSFWorkbook workbook, CommonDTO commonDto) {
+        JSONObject result = new JSONObject();
+        JSONArray errors = new JSONArray();
+        List<Employee> toPersist = new ArrayList<>();
+        int success = 0;
+
+        try (workbook) {
+            Sheet sheet = Optional.ofNullable(workbook.getSheetAt(0))
+                    .orElseThrow(() -> new IllegalArgumentException("Excel has no sheets"));
+            if (sheet.getPhysicalNumberOfRows() < 2) {
+                result.put("successCount", 0);
+                result.put("errorCount", 0);
+                result.put("errors", errors);
+                return result;
+            }
+            Row headerRow = sheet.getRow(0);
+            Map<String, Integer> colIndex = buildHeaderIndex(headerRow);
+            List<String> required = List.of(COL_NAME);
+            for (String req : required) {
+                if (!colIndex.containsKey(req)) {
+                    errors.put(errorJson(1, "Missing required column: " + req));
+                }
+            }
+            if (!errors.isEmpty()) {
+                result.put("successCount", 0);
+                result.put("errorCount", errors.length());
+                result.put("errors", errors);
+                return result;
+            }
+            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+
+                try {
+                    String name              = getCellString(row, colIndex.get(COL_NAME));
+                    String department        = getCellString(row, colIndex.get(COL_DEPARTMENT));
+                    String role              = getCellString(row, colIndex.get(COL_ROLE));
+                    String level             = getCellString(row, colIndex.get(COL_LEVEL));
+                    String totalExperience   = getCellString(row, colIndex.get(COL_TOTAL_EXPERIENCE));
+                    String pastOrganization  = getCellString(row, colIndex.get(COL_PAST_ORGANIZATION));
+                    String labAllocation     = getCellString(row, colIndex.get(COL_LAB_ALLOCATION));
+                    Integer complianceDay    = getCellInteger(row, colIndex.get(COL_COMPLIANCE_DAY));
+                    LocalDate dateOfJoining  = getCellLocalDate(row, colIndex.get(COL_DATE_OF_JOINING));
+
+                    // Basic validations
+                    if (name == null || name.isBlank()) {
+                        throw new IllegalArgumentException("Name is required");
+                    }
+                    if (complianceDay != null && complianceDay < 0) {
+                        throw new IllegalArgumentException("Compliance day must be >= 0");
+                    }
+
+                    // Build entity
+                    Employee emp = new Employee();
+                    emp.setName(name);
+                    emp.setDepartment(nullIfBlank(department));
+                    emp.setRole(nullIfBlank(role));
+                    emp.setLevel(nullIfBlank(level));
+                    emp.setTotalExperience(nullIfBlank(totalExperience));
+                    emp.setPastOrganization(nullIfBlank(pastOrganization));
+                    emp.setLabAllocation(nullIfBlank(labAllocation));
+                    if (complianceDay != null) emp.setComplainceDay(String.valueOf(complianceDay));
+                    emp.setDate(dateOfJoining);
+                    emp.setCreatedBy(new Users(commonDto.getLoginUserId()));
+                    emp.setUpdatedBy(new Users(commonDto.getLoginUserId()));
+                    emp.setCreatedTime(new Date());
+                    emp.setUpdatedTime(new Date());
+                    toPersist.add(emp);
+                    success++;
+
+                } catch (Exception rowEx) {
+                    errors.put(errorJson(r + 1, rowEx.getMessage())); // +1 for human row number
+                }
+            }
+
+            // 3) Persist valid rows
+            if (!toPersist.isEmpty()) {
+                employeeRepositrory.saveAll(toPersist);
+            }
+
+            result.put("successCount", success);
+            result.put("errorCount", errors.length());
+            result.put("errors", errors);
+            return result;
+
+        } catch (Exception e) {
+            JSONObject fatal = new JSONObject();
+            fatal.put("row", 0);
+            fatal.put("message", "Failed to read Excel: " + e.getMessage());
+            errors.put(fatal);
+
+            result.put("successCount", 0);
+            result.put("errorCount", errors.length());
+            result.put("errors", errors);
+            return result;
+        }
+    }
+
+    private Map<String, Integer> buildHeaderIndex(Row headerRow) {
+        Map<String, Integer> map = new HashMap<>();
+        if (headerRow == null) return map;
+
+        short minColIx = headerRow.getFirstCellNum();
+        short maxColIx = headerRow.getLastCellNum();
+
+        for (int c = minColIx; c < maxColIx; c++) {
+            Cell cell = headerRow.getCell(c);
+            if (cell == null) continue;
+            String raw = cell.getStringCellValue();
+            if (raw == null) continue;
+            String key = normalizeHeader(raw);
+            String canonical = HEADER_ALIASES.getOrDefault(key, key);
+            map.put(canonical, c);
+        }
+        return map;
+    }
+
+    private String normalizeHeader(String s) {
+        return s == null ? "" : s.trim().toLowerCase(Locale.ROOT);
+    }
+
+    @SuppressWarnings("unchecked")
+    private JSONObject errorJson(int rowNumber, String message) {
+        JSONObject j = new JSONObject();
+        j.put("row", rowNumber);
+        j.put("message", message);
+        return j;
+    }
+
+    private String nullIfBlank(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    private String getCellString(Row row, Integer colIdx) {
+        if (colIdx == null) return null;
+        Cell cell = row.getCell(colIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        if (cell == null) return null;
+
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue().trim();
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    // Convert Excel date to ISO string if needed
+                    LocalDate ld = cell.getLocalDateTimeCellValue().toLocalDate();
+                    return ld.toString();
+                }
+                // Avoid scientific notation: use long if integer
+                double d = cell.getNumericCellValue();
+                if (d == Math.rint(d)) {
+                    return String.valueOf((long) d);
+                }
+                return String.valueOf(d);
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                try {
+                    return cell.getStringCellValue().trim();
+                } catch (IllegalStateException e) {
+                    return String.valueOf(cell.getNumericCellValue());
+                }
+            default:
+                return null;
+        }
+    }
+
+    private Integer getCellInteger(Row row, Integer colIdx) {
+        String s = getCellString(row, colIdx);
+        if (s == null || s.isBlank()) return null;
+        try {
+            return Integer.valueOf(s.trim());
+        } catch (NumberFormatException e) {
+            // maybe it's float like "1.0"
+            try {
+                double d = Double.parseDouble(s.trim());
+                return (int) d;
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Invalid integer: " + s);
+            }
+        }
+    }
+
+    private LocalDate getCellLocalDate(Row row, Integer colIdx) {
+        if (colIdx == null) return null;
+        Cell cell = row.getCell(colIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        if (cell == null) return null;
+
+        if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+            return cell.getLocalDateTimeCellValue().toLocalDate();
+        }
+
+        String s = getCellString(row, colIdx);
+        if (s == null || s.isBlank()) return null;
+
+        // Try multiple patterns
+        for (DateTimeFormatter fmt : DATE_PATTERNS) {
+            try {
+                return LocalDate.parse(s.trim(), fmt);
+            } catch (DateTimeParseException ignored) {}
+        }
+        // Last resort: ISO
+        try {
+            return LocalDate.parse(s.trim());
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("Invalid date: " + s + " (expected yyyy-MM-dd, dd-MM-yyyy, dd/MM/yyyy, or MM/dd/yyyy)");
+        }
+    }
 }
