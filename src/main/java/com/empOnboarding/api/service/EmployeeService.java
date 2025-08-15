@@ -9,6 +9,8 @@ import java.util.stream.Collectors;
 
 import com.empOnboarding.api.dto.PdfDTO;
 
+import com.empOnboarding.api.entity.*;
+import com.empOnboarding.api.repository.*;
 import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFCellStyle;
 import org.apache.poi.hssf.usermodel.HSSFRow;
@@ -27,11 +29,6 @@ import org.springframework.stereotype.Service;
 
 import com.empOnboarding.api.dto.CommonDTO;
 import com.empOnboarding.api.dto.EmployeeDTO;
-import com.empOnboarding.api.entity.Constant;
-import com.empOnboarding.api.entity.Employee;
-import com.empOnboarding.api.entity.Users;
-import com.empOnboarding.api.repository.ConstantRepository;
-import com.empOnboarding.api.repository.EmployeeRepository;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
 import com.empOnboarding.api.utils.Constants;
@@ -42,29 +39,126 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepositrory;
 
+    private final QuestionLevelRepository questionLevelRepository;
+
     private final AuditTrailService auditTrailService;
 
     private final ConstantRepository constantRepository;
 
     private final MailerService mailerService;
 
-    public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
-                           ConstantRepository constantRepository, MailerService mailerService) {
+    private final QuestionRepository questionRepository;
+
+    private final TaskRepository taskRepository;
+
+    private final UsersRepository usersRepository;
+
+
+
+    public EmployeeService(EmployeeRepository employeeRepositrory,QuestionLevelRepository questionLevelRepository,
+                           AuditTrailService auditTrailService, ConstantRepository constantRepository, MailerService mailerService,
+                           QuestionRepository questionRepository, TaskRepository taskRepository, UsersRepository usersRepository) {
         this.employeeRepositrory = employeeRepositrory;
+        this.questionLevelRepository = questionLevelRepository;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
         this.mailerService = mailerService;
+        this.questionRepository = questionRepository;
+        this.taskRepository = taskRepository;
+        this.usersRepository = usersRepository;
     }
 
     public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user){
+        List<Employee> eDto = new ArrayList<>();
         Employee emp = new Employee(null, empDto.getName(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
                 empDto.getTotalExperience(), empDto.getPastOrganization(), empDto.getLabAllocation(), empDto.getComplainceDay(),
                 LocalDate.parse(empDto.getDate()), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
         employeeRepositrory.save(emp);
+        eDto.add(emp);
+        createTask(eDto,user);
         dto.setSystemRemarks(emp.toString());
         dto.setModuleId(emp.getName());
         auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
         return true;
+    }
+
+    private static int getLastSequenceForMonth(String mmYY) {
+        return 5;
+    }
+
+    @Transactional(readOnly = true)
+    public String nextId() {
+        LocalDate now = LocalDate.now();
+        String mm = String.format("%02d", now.getMonthValue());
+        String yy = String.format("%02d", now.getYear() % 100);
+        String prefix = "T" + mm + yy;
+        Task last = taskRepository.findTopByIdStartingWithOrderByIdDesc(prefix);
+        int nextSeq = 1;
+        if (last != null) {
+            String lastId = last.getId();
+            String seqStr = lastId.substring(prefix.length());
+            nextSeq = Integer.parseInt(seqStr) + 1;
+        }
+        return String.format("%s%05d", prefix, nextSeq);
+    }
+
+
+//    public void createTask(List<Employee> eDto, CommonDTO cDto){
+//        for(Employee dto: eDto){
+//            List<QuestionLevel> qL=  questionLevelRepository.findAllByLevel(dto.getLevel());
+//            List<Questions> q = questionRepository.findAllById(qL.stream().map(m -> m.getQuestionId().getId()).collect(Collectors.toList()));
+//            Map<Long,List<Questions>> groupByGroupId = q.stream().collect(Collectors.groupingBy(m -> m.getGroupId().getId()));
+//            groupByGroupId.forEach((groupId, questionsList) -> {
+//                Task task = new Task();
+//                Users assignedTo = new Users();
+//                task.setId(nextId());
+//                task.setEmployeeId(dto);
+//                task.setCreatedBy(new Users(cDto.getLoginUserId()));
+//                task.setUpdatedBy(new Users(cDto.getLoginUserId()));
+//                task.setCreatedTime(new Date());
+//                task.setUpdatedTime(new Date());
+//                for(Questions qn:questionsList){
+//                    TaskQuestions tq = new TaskQuestions();
+//                    assignedTo = qn.getGroupId().getPgLead();
+//                    tq.setQuestionId(qn);
+//                    tq.setTaskId(task);
+//                    task.getTaskQuestions().add(tq);
+//                }
+//                task.setAssignedTo(assignedTo);
+//                taskRepository.save(task);
+//            });
+//        }
+//    }
+
+    @Transactional
+    public void createTask(List<Employee> employees, UserPrincipal user) {
+        Users actor = usersRepository.getReferenceById(user.getId());
+        for (Employee emp : employees) {
+            List<Questions> questions = questionRepository.findDistinctByLevel(emp.getLevel());
+            Map<Long, List<Questions>> byGroup = questions.stream()
+                    .filter(q -> q.getGroupId() != null && q.getGroupId().getId() != null)
+                    .collect(Collectors.groupingBy(q -> q.getGroupId().getId()));
+            Date now = new Date();
+            byGroup.forEach((groupId, questionsList) -> {
+                if (questionsList == null || questionsList.isEmpty()) return;
+                Task task = new Task();
+                task.setId(nextId());
+                task.setEmployeeId(emp);
+                task.setCreatedBy(actor);
+                task.setUpdatedBy(actor);
+                task.setCreatedTime(now);
+                task.setUpdatedTime(now);
+                Users lead = questionsList.get(0).getGroupId().getPgLead();
+                task.setAssignedTo(lead != null ? lead : actor);
+                for (Questions qn : questionsList) {
+                    TaskQuestions tq = new TaskQuestions();
+                    tq.setTaskId(task);
+                    tq.setQuestionId(qn);
+                    task.getTaskQuestions().add(tq);
+                }
+                taskRepository.save(task);
+            });
+        }
     }
 
     public EmployeeDTO populateEmployee(Employee emp) {
