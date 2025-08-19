@@ -153,7 +153,7 @@ public class EmployeeService {
         e.setName(eDto.getName());
         e.setDepartment(eDto.getDepartment());
         e.setRole(eDto.getRole());
-        e.setLevel(eDto.getRole());
+        e.setLevel(eDto.getLevel());
         e.setTotalExperience(eDto.getTotalExperience());
         e.setPastOrganization(eDto.getPastOrganization());
         e.setLabAllocation(eDto.getLabAllocation());
