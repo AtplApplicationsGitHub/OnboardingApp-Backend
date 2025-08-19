@@ -5,6 +5,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
+import com.empOnboarding.api.dto.CommonDTO;
+import com.empOnboarding.api.security.UserPrincipal;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -133,6 +135,12 @@ public class CommonUtls {
 			return date.toString();
 		}
 		return result;
+	}
+
+	public static void populateCommonDto(UserPrincipal user, CommonDTO dto) {
+		dto.setLoginUserId(user.getId());
+		dto.setLoginFullName(user.getUsername());
+		dto.setRoleName(user.getRoleName());
 	}
 
 }

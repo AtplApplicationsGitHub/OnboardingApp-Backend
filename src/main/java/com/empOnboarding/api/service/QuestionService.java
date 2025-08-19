@@ -1,14 +1,11 @@
 package com.empOnboarding.api.service;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import com.empOnboarding.api.dto.PdfDTO;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,13 +28,13 @@ import com.empOnboarding.api.utils.Constants;
 @Service
 public class QuestionService {
 	
-	private QuestionRepository questionRepository;
+	private final QuestionRepository questionRepository;
 	
-	private AuditTrailService auditTrailService;
+	private final AuditTrailService auditTrailService;
 	
-	private ConstantRepository constantRepository;
+	private final ConstantRepository constantRepository;
 	
-	private MailerService mailerService;
+	private final MailerService mailerService;
 	
 	
 	public QuestionService(QuestionRepository questionRepository,AuditTrailService auditTrailService,
@@ -50,7 +47,7 @@ public class QuestionService {
 	
 	public Boolean createQuestion(QuestionsDTO qDto, CommonDTO dto, UserPrincipal user) throws IOException {
 		Set<QuestionLevel> quesLevel = new HashSet<>();
-		Questions ques = new Questions(null, qDto.getText(), qDto.getComplainceDay(), qDto.getResponse() ,new Groups(Long.valueOf(qDto.getGroupId())),
+		Questions ques = new Questions(null, qDto.getText(), qDto.getPeriod(), qDto.getComplainceDay(), qDto.getResponse() ,new Groups(Long.valueOf(qDto.getGroupId())),
 				quesLevel,new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
 		if (qDto.getQuestionLevel() != null) {
 			for (String level : qDto.getQuestionLevel()) {
@@ -68,6 +65,7 @@ public class QuestionService {
 		QuestionsDTO qDto = new QuestionsDTO();
 		qDto.setId(ques.getId().toString());
 		qDto.setText(ques.getText());
+		qDto.setPeriod(ques.getResponse());
 		qDto.setResponse(ques.getResponse());
 		qDto.setGroupId(ques.getGroupId().getId().toString());
 		
@@ -104,6 +102,7 @@ public class QuestionService {
 	        Questions q = quesOpt.get();
 	        q.setText(qDto.getText());
 	        q.setResponse(qDto.getResponse());
+			q.setPeriod(qDto.getPeriod());
 	        q.setComplainceDay(qDto.getComplainceDay());
 	        Set<QuestionLevel> quesLevel = new HashSet<>();
 	        if (qDto.getQuestionLevel() != null && !qDto.getQuestionLevel().isEmpty()) {
@@ -140,4 +139,5 @@ public class QuestionService {
 	public long countQuestionsByGroup(Long id) {
 		return questionRepository.countByGroupIdId(id);
 	}
+
 }

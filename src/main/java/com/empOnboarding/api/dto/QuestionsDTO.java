@@ -13,11 +13,12 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Generated
-public class QuestionsDTO {
+public class QuestionsDTO extends CommonDTO{
 	
 	private String id;
 	private String text;
 	private String response;
+	private String period;
 	private String complainceDay;
 	private List<String> questionLevel;
 	private String groupId;

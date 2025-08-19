@@ -1,16 +1,15 @@
 package com.empOnboarding.api.controller;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
+import com.empOnboarding.api.dto.PdfDTO;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import com.empOnboarding.api.utils.CommonUtls;
 import org.json.simple.JSONObject;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import com.empOnboarding.api.dto.CommonDTO;
 import com.empOnboarding.api.dto.EmployeeDTO;
@@ -18,6 +17,7 @@ import com.empOnboarding.api.security.CurrentUser;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.service.EmployeeService;
 import com.empOnboarding.api.utils.Constants;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/employee")
@@ -43,18 +43,18 @@ public class EmployeeController {
 		}
 	}
 	
-//	@PostMapping("/updateGroup")
-//	public boolean updateGroup(@RequestBody GroupsDTO groupsDTO, CommonDTO dto,
-//			HttpServletRequest request, @CurrentUser UserPrincipal user) {
-//		try {
-//			dto.setIpAddress(request.getRemoteAddr());
-//			dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
-//			dto.setModule(Constants.GROUPS);
-//			return groupService.updateGroup(groupsDTO, dto, user);
-//		} catch (Exception e) {
-//			return false;
-//		}
-//	}
+	@PostMapping("/updateEmployee")
+	public boolean updateGroup(@RequestBody EmployeeDTO eDto, CommonDTO dto,
+			HttpServletRequest request, @CurrentUser UserPrincipal user) {
+		try {
+			dto.setIpAddress(request.getRemoteAddr());
+			dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+			dto.setModule(Constants.EMPLOYEE);
+			return employeeService.updateEmployee(eDto, dto, user);
+		} catch (Exception e) {
+			return false;
+		}
+	}
 	
 	@PostMapping("/findFilteredEmployee/{search}/{pageNo}")
 	public JSONObject findFilteredGroups(@PathVariable String search,@PathVariable String pageNo) throws Exception {
@@ -70,5 +70,30 @@ public class EmployeeController {
 	@DeleteMapping("/deleteEmployee/{id}")
 	public void deleteGroup(@PathVariable Long id, CommonDTO dto) throws Exception {
 		employeeService.deleteEmployee(id, dto);
+	}
+
+	@PostMapping("/generateAddEmployeeExcel")
+	public ResponseEntity<PdfDTO> downloadExcel(CommonDTO dto,@CurrentUser UserPrincipal user, HttpServletRequest request,
+												HttpServletResponse response) throws Exception {
+		CommonUtls.populateCommonDto(user,dto);
+		dto.setIpAddress(request.getRemoteAddr());
+		dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+		return ResponseEntity.status(HttpStatus.OK)
+				.body(employeeService.generateExcel(dto));
+	}
+
+	@PostMapping("/importEmployees")
+	public JSONObject extractExcelFile(@RequestParam(value = "file") MultipartFile file,
+									   @CurrentUser UserPrincipal user, HttpServletRequest request) throws Exception {
+		JSONObject json = new JSONObject();
+		try {
+			CommonDTO commonDto = new CommonDTO();
+			CommonUtls.populateCommonDto(user, commonDto);
+			commonDto.setIpAddress(request.getRemoteAddr());
+			commonDto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+			json = employeeService.readExcelFile(new XSSFWorkbook(file.getInputStream()), commonDto);
+		} catch (Exception ex) {
+		}
+		return json;
 	}
 }
