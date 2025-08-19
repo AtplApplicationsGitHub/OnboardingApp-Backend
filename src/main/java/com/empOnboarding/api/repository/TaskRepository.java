@@ -11,4 +11,5 @@ public interface TaskRepository extends JpaRepository<Task, String> {
 
     Task findTopByIdStartingWithOrderByIdDesc(String prefix);
 
+    Page<Task> findAllByOrderByCreatedTimeDesc(Pageable pageable);
 }

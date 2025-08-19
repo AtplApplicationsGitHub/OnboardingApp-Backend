@@ -39,33 +39,22 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepositrory;
 
-    private final QuestionLevelRepository questionLevelRepository;
-
     private final AuditTrailService auditTrailService;
 
     private final ConstantRepository constantRepository;
 
     private final MailerService mailerService;
 
-    private final QuestionRepository questionRepository;
-
-    private final TaskRepository taskRepository;
-
-    private final UsersRepository usersRepository;
+    private final TaskService taskService;
 
 
-
-    public EmployeeService(EmployeeRepository employeeRepositrory,QuestionLevelRepository questionLevelRepository,
-                           AuditTrailService auditTrailService, ConstantRepository constantRepository, MailerService mailerService,
-                           QuestionRepository questionRepository, TaskRepository taskRepository, UsersRepository usersRepository) {
+    public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
+                           ConstantRepository constantRepository, MailerService mailerService, TaskService taskService) {
         this.employeeRepositrory = employeeRepositrory;
-        this.questionLevelRepository = questionLevelRepository;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
         this.mailerService = mailerService;
-        this.questionRepository = questionRepository;
-        this.taskRepository = taskRepository;
-        this.usersRepository = usersRepository;
+        this.taskService = taskService;
     }
 
     public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user){
@@ -75,7 +64,7 @@ public class EmployeeService {
                 LocalDate.parse(empDto.getDate()), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
         employeeRepositrory.save(emp);
         eDto.add(emp);
-        createTask(eDto,user);
+        taskService.createTask(eDto,user);
         dto.setSystemRemarks(emp.toString());
         dto.setModuleId(emp.getName());
         auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
@@ -84,22 +73,6 @@ public class EmployeeService {
 
     private static int getLastSequenceForMonth(String mmYY) {
         return 5;
-    }
-
-    @Transactional(readOnly = true)
-    public String nextId() {
-        LocalDate now = LocalDate.now();
-        String mm = String.format("%02d", now.getMonthValue());
-        String yy = String.format("%02d", now.getYear() % 100);
-        String prefix = "T" + mm + yy;
-        Task last = taskRepository.findTopByIdStartingWithOrderByIdDesc(prefix);
-        int nextSeq = 1;
-        if (last != null) {
-            String lastId = last.getId();
-            String seqStr = lastId.substring(prefix.length());
-            nextSeq = Integer.parseInt(seqStr) + 1;
-        }
-        return String.format("%s%05d", prefix, nextSeq);
     }
 
 
@@ -130,36 +103,6 @@ public class EmployeeService {
 //        }
 //    }
 
-    @Transactional
-    public void createTask(List<Employee> employees, UserPrincipal user) {
-        Users actor = usersRepository.getReferenceById(user.getId());
-        for (Employee emp : employees) {
-            List<Questions> questions = questionRepository.findDistinctByLevel(emp.getLevel());
-            Map<Long, List<Questions>> byGroup = questions.stream()
-                    .filter(q -> q.getGroupId() != null && q.getGroupId().getId() != null)
-                    .collect(Collectors.groupingBy(q -> q.getGroupId().getId()));
-            Date now = new Date();
-            byGroup.forEach((groupId, questionsList) -> {
-                if (questionsList == null || questionsList.isEmpty()) return;
-                Task task = new Task();
-                task.setId(nextId());
-                task.setEmployeeId(emp);
-                task.setCreatedBy(actor);
-                task.setUpdatedBy(actor);
-                task.setCreatedTime(now);
-                task.setUpdatedTime(now);
-                Users lead = questionsList.get(0).getGroupId().getPgLead();
-                task.setAssignedTo(lead != null ? lead : actor);
-                for (Questions qn : questionsList) {
-                    TaskQuestions tq = new TaskQuestions();
-                    tq.setTaskId(task);
-                    tq.setQuestionId(qn);
-                    task.getTaskQuestions().add(tq);
-                }
-                taskRepository.save(task);
-            });
-        }
-    }
 
     public EmployeeDTO populateEmployee(Employee emp) {
         EmployeeDTO eDto = new EmployeeDTO();

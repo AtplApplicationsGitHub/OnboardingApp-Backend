@@ -40,6 +40,9 @@ public class Questions implements java.io.Serializable {
 	
 	@Column(name = "text")
 	private String text;
+
+	@Column(name = "period")
+	private String period;
 	
 	@Column(name = "complaince_day")
 	private String complainceDay;

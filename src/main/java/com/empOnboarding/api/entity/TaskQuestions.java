@@ -35,5 +35,8 @@ public class TaskQuestions implements java.io.Serializable{
     @JoinColumn(name = "task_id", referencedColumnName = "id")
     private Task taskId;
 
+    @Column(name = "status")
+    private String status;
+
 
 }
