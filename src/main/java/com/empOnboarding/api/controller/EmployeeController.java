@@ -4,10 +4,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.empOnboarding.api.dto.PdfDTO;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import com.empOnboarding.api.utils.CommonUtls;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +21,8 @@ import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.service.EmployeeService;
 import com.empOnboarding.api.utils.Constants;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.InputStream;
 
 @RestController
 @RequestMapping("/api/employee")
@@ -82,18 +87,28 @@ public class EmployeeController {
 				.body(employeeService.generateExcel(dto));
 	}
 
-	@PostMapping("/importEmployees")
-	public JSONObject extractExcelFile(@RequestParam(value = "file") MultipartFile file,
-									   @CurrentUser UserPrincipal user, HttpServletRequest request) throws Exception {
-		JSONObject json = new JSONObject();
-		try {
-			CommonDTO commonDto = new CommonDTO();
-			CommonUtls.populateCommonDto(user, commonDto);
-			commonDto.setIpAddress(request.getRemoteAddr());
-			commonDto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
-			json = employeeService.readExcelFile(new XSSFWorkbook(file.getInputStream()), commonDto);
+	@PostMapping(value = "/importEmployees", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<JSONObject> extractExcelFile(
+			@RequestParam("file") MultipartFile file,
+			@CurrentUser UserPrincipal user,
+			HttpServletRequest request) {
+
+		CommonDTO commonDto = new CommonDTO();
+		CommonUtls.populateCommonDto(user, commonDto);
+		commonDto.setIpAddress(request.getRemoteAddr());
+		commonDto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+
+		try (InputStream in = file.getInputStream();
+			 // WorkbookFactory handles both .xls and .xlsx
+			 Workbook workbook = WorkbookFactory.create(in)) {
+
+			JSONObject json = employeeService.readExcelFile(workbook, commonDto,user);
+			return ResponseEntity.ok(json);
+
 		} catch (Exception ex) {
+			JSONObject err = new JSONObject();
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
 		}
-		return json;
 	}
+
 }
