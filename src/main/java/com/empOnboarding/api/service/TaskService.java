@@ -1,7 +1,5 @@
 package com.empOnboarding.api.service;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -9,19 +7,15 @@ import java.util.stream.Collectors;
 
 import com.empOnboarding.api.dto.*;
 import com.empOnboarding.api.entity.*;
-import com.empOnboarding.api.repository.TaskRepository;
-import com.empOnboarding.api.repository.UsersRepository;
+import com.empOnboarding.api.repository.*;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import com.empOnboarding.api.repository.ConstantRepository;
-import com.empOnboarding.api.repository.QuestionRepository;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
-import com.empOnboarding.api.utils.Constants;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -35,12 +29,15 @@ public class TaskService {
 
     private final ConstantRepository constantRepository;
 
+    private final GroupRepository groupRepository;
+
     public TaskService(TaskRepository taskRepository, UsersRepository usersRepository, QuestionRepository questionRepository,
-                       ConstantRepository constantRepository) {
+                       ConstantRepository constantRepository,GroupRepository groupRepository) {
         this.taskRepository = taskRepository;
         this.usersRepository = usersRepository;
         this.questionRepository = questionRepository;
         this.constantRepository = constantRepository;
+        this.groupRepository = groupRepository;
     }
 
     @Transactional
@@ -53,10 +50,12 @@ public class TaskService {
                     .collect(Collectors.groupingBy(q -> q.getGroupId().getId()));
             Date now = new Date();
             byGroup.forEach((groupId, questionsList) -> {
+                Groups g = groupRepository.getReferenceById(groupId);
                 if (questionsList == null || questionsList.isEmpty()) return;
                 Task task = new Task();
                 task.setId(nextId());
                 task.setEmployeeId(emp);
+                task.setGroupId(g);
                 task.setCreatedBy(actor);
                 task.setUpdatedBy(actor);
                 task.setCreatedTime(now);
@@ -90,29 +89,43 @@ public class TaskService {
         return String.format("%s%05d", prefix, nextSeq);
     }
 
+    @SuppressWarnings("unchecked")
     public JSONObject filteredTask(String pageNo) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
-        List<TaskDTO> list;
+        List<TaskDTO> dtoList;
         Page<Task> taskList;
         taskList = taskRepository.findAllByOrderByCreatedTimeDesc(pageable);
-//        if (!CommonUtls.isCompletlyEmpty(search)) {
-//            empList = taskRepository.findAllBySearch(search, pageable);
-//        } else {
-//        }
-        list = taskList.stream().map(this::populateTask).collect(Collectors.toList());
-        json.put("commonListDto", list);
+        dtoList = taskList.stream().map(this::populateTask).collect(Collectors.toList());
+        json.put("commonListDto", dtoList);
         json.put("totalElements", taskList.getTotalElements());
         return json;
     }
 
+
+
+    @SuppressWarnings("unchecked")
+    public JSONObject filteredTaskForAdmin(String pageNo) {
+        JSONObject json = new JSONObject();
+        Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
+        Page<TaskProjection> taskList;
+        taskList = taskRepository.findEmployeeTaskSummaries(pageable);
+        json.put("commonListDto", taskList);
+        json.put("totalElements", taskList.getTotalElements());
+        return json;
+    }
+
+
     public TaskDTO populateTask(Task task) {
         TaskDTO tDto = new TaskDTO();
         Constant c = constantRepository.findByConstant("DateFormat");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
         Employee e = task.getEmployeeId();
         tDto.setId(task.getId());
+        tDto.setGroupName(task.getGroupId().getName());
         tDto.setEmployeeName(e.getName());
         tDto.setLevel(e.getLevel());
+        tDto.setDepartment(e.getDepartment());
         tDto.setRole(e.getRole());
         tDto.setLab(e.getLabAllocation());
         tDto.setPastExperience(e.getTotalExperience());
@@ -128,36 +141,61 @@ public class TaskService {
         } else{
             tDto.setStatus("In Progress");
         }
+        tDto.setDoj(e.getDate().format(formatter));
         tDto.setTotalQuestions(tq.size());
-        List<TaskQuestionsDTO> questionDtos = tq.stream()
-                .map(q -> populateTaskQuestion(q, e.getDate())) // pass date via lambda
+        List<TaskQuestionsDTO> questionDto = tq.stream()
+                .map(q -> populateTaskQuestion(q, e.getDate()))
                 .collect(Collectors.toList());
-        tDto.setQuestionList(questionDtos);        tDto.setCompletedQuestions(completed);
+        tDto.setQuestionList(questionDto);
+        tDto.setCompletedQuestions(completed);
         tDto.setCreatedTime(CommonUtls.datetoString(task.getCreatedTime(), c.getConstantValue()));
         tDto.setUpdatedTime(CommonUtls.datetoString(task.getUpdatedTime(), c.getConstantValue()));
         return tDto;
     }
 
-    public TaskQuestionsDTO populateTaskQuestion(TaskQuestions taskQuestions,LocalDate date){
+    public TaskQuestionsDTO populateTaskQuestion(TaskQuestions taskQuestions, LocalDate baseDate) {
         TaskQuestionsDTO dto = new TaskQuestionsDTO();
         dto.setId(taskQuestions.getId().toString());
         dto.setQuestionId(taskQuestions.getQuestionId().getText());
-        if(taskQuestions.getQuestionId().getPeriod().equalsIgnoreCase("after")){
-            dto.setComplianceDay("+"+taskQuestions.getQuestionId().getComplainceDay());
-        }else{
-            dto.setComplianceDay("-"+taskQuestions.getQuestionId().getComplainceDay());
-        }
+
+        // Determine sign
+        int offsetDays = taskQuestions.getQuestionId().getPeriod().equalsIgnoreCase("after")
+                ?  Integer.parseInt(taskQuestions.getQuestionId().getComplainceDay())
+                : -Integer.parseInt(taskQuestions.getQuestionId().getComplainceDay());
+        LocalDate complianceDate = baseDate.plusDays(offsetDays);
+
+        dto.setOverDueFlag(!"completed".equalsIgnoreCase(taskQuestions.getStatus())
+                && complianceDate.isBefore(LocalDate.now()));
+        Date utilDate = java.sql.Date.valueOf(complianceDate);
+        Constant c = constantRepository.findByConstant("DateFormat");
+        String formattedDate = CommonUtls.datetoString(utilDate, c.getConstantValue());
+        dto.setComplianceDay(formattedDate);
+
         dto.setResponse(taskQuestions.getResponse());
         dto.setStatus(taskQuestions.getStatus());
+
         return dto;
     }
 
-    public TaskDTO findById(String id) {
-        TaskDTO tDTO = null;
-        Optional<Task> isTask = taskRepository.findById(id);
-        if (isTask.isPresent()) {
-            tDTO = populateTask(isTask.get());
+
+
+    public List<TaskDTO> findById(String id) {
+        List<TaskDTO> tDTOs = new ArrayList<>();
+        List<String> tId = Arrays.stream(id.split(",")).toList();
+        List<Task> t =  taskRepository.findAllById(tId);
+        tDTOs = t.stream().map(this::populateTask).collect(Collectors.toList());
+        return tDTOs;
+    }
+
+    public boolean reassignTask(String taskId, Long id){
+        Optional<Task> t = taskRepository.findById(taskId);
+        boolean result = false;
+        if (t.isPresent()){
+            Task task = t.get();
+            task.setAssignedTo(new Users(id));
+            taskRepository.save(task);
+            result = true;
         }
-        return tDTO;
+        return result;
     }
 }

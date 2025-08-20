@@ -19,7 +19,9 @@ public class TaskDTO {
 
 	private String id;
 	private String employeeName;
+	private String groupName;
 	private String level;
+	private String department;
 	private String role;
 	private String lab;
 	private String pastExperience;
@@ -29,9 +31,11 @@ public class TaskDTO {
 	private int totalQuestions;
 	private long completedQuestions;
 	private String status;
+	private String doj;
 	private List<TaskQuestionsDTO> questionList;
 	private String createdTime;
 	private String updatedTime;
+	private List<String> taskId;
 
 
 

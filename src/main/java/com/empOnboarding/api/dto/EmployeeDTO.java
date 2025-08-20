@@ -15,6 +15,7 @@ public class EmployeeDTO {
 	
 	private String id;
 	private String name;
+	private String email;
 	private String date;
 	private String department;
 	private String role;

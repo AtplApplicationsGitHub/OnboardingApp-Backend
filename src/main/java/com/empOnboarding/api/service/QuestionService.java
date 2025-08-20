@@ -1,11 +1,8 @@
 package com.empOnboarding.api.service;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import com.empOnboarding.api.dto.PdfDTO;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -45,7 +42,7 @@ public class QuestionService {
 		this.mailerService = mailerService;
 	}
 	
-	public Boolean createQuestion(QuestionsDTO qDto, CommonDTO dto, UserPrincipal user) throws IOException {
+	public Boolean createQuestion(QuestionsDTO qDto, CommonDTO dto, UserPrincipal user) {
 		Set<QuestionLevel> quesLevel = new HashSet<>();
 		Questions ques = new Questions(null, qDto.getText(), qDto.getPeriod(), qDto.getComplainceDay(), qDto.getResponse() ,new Groups(Long.valueOf(qDto.getGroupId())),
 				quesLevel,new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
@@ -70,7 +67,7 @@ public class QuestionService {
 		qDto.setGroupId(ques.getGroupId().getId().toString());
 		
 		qDto.setComplainceDay(ques.getComplainceDay());
-		List<String> level = new ArrayList<String>();
+		List<String> level = new ArrayList<>();
 		for (QuestionLevel qLevel : ques.getQuestionLevels()) {
 			level.add(qLevel.getLevel());
 		}
@@ -95,8 +92,8 @@ public class QuestionService {
 	
 	public Boolean updateQuestion(QuestionsDTO qDto, CommonDTO dto, UserPrincipal user) {
 	    Optional<Questions> quesOpt = questionRepository.findById(Long.valueOf(qDto.getId()));
-	    Boolean result = false;
-	    if (!quesOpt.isPresent()) {
+	    boolean result = false;
+	    if (quesOpt.isEmpty()) {
 	        mailerService.sendEmailOnException(null);
 	    } else {
 	        Questions q = quesOpt.get();
@@ -104,7 +101,8 @@ public class QuestionService {
 	        q.setResponse(qDto.getResponse());
 			q.setPeriod(qDto.getPeriod());
 	        q.setComplainceDay(qDto.getComplainceDay());
-	        Set<QuestionLevel> quesLevel = new HashSet<>();
+			q.setUpdatedBy(new Users(user.getId()));
+			Set<QuestionLevel> quesLevel = new HashSet<>();
 	        if (qDto.getQuestionLevel() != null && !qDto.getQuestionLevel().isEmpty()) {
 	            for (String level : qDto.getQuestionLevel()) {
 	                quesLevel.add(new QuestionLevel(null, level, q, new Date()));
@@ -120,7 +118,7 @@ public class QuestionService {
 	    return result;
 	}
 	
-	public void deleteQuestion(Long id, CommonDTO dto) throws Exception{
+	public void deleteQuestion(Long id, CommonDTO dto){
 		try {
 			questionRepository.deleteById(id);
 			dto.setModuleId("NA");

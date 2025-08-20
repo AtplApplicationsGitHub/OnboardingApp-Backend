@@ -29,6 +29,10 @@ public class Task {
     private Employee employeeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id", referencedColumnName = "id")
+    private Groups groupId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to", referencedColumnName = "id")
     private Users assignedTo;
 
