@@ -15,13 +15,13 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Generated
-public class TaskQuestionsDTO {
+public class TaskViewDTO {
 
-    private String id;
-    private String questionId;
-    private String response;
-    private String status;
-    private String complianceDay;
-    private Boolean overDueFlag;
+    private String empName;
+    private List<String> taskId;
+    private String department;
+    private String role;
+    private String completedCount;
+    private String totalCount;
 
 }

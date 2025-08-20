@@ -35,6 +35,9 @@ public class Employee implements java.io.Serializable {
 	@Column(name = "id", unique = true, nullable = false)
 	private Long id;
 
+	@Column(name = "email")
+	private String email;
+
 	@Column(name = "name")
 	private String name;
 	

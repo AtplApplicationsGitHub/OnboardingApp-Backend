@@ -59,7 +59,7 @@ public class EmployeeService {
 
     public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user){
         List<Employee> eDto = new ArrayList<>();
-        Employee emp = new Employee(null, empDto.getName(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
+        Employee emp = new Employee(null, empDto.getName(),empDto.getEmail(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
                 empDto.getTotalExperience(), empDto.getPastOrganization(), empDto.getLabAllocation(), empDto.getComplainceDay(),
                 LocalDate.parse(empDto.getDate()), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
         employeeRepositrory.save(emp);
@@ -69,10 +69,6 @@ public class EmployeeService {
         dto.setModuleId(emp.getName());
         auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
         return true;
-    }
-
-    private static int getLastSequenceForMonth(String mmYY) {
-        return 5;
     }
 
 
@@ -108,6 +104,7 @@ public class EmployeeService {
         EmployeeDTO eDto = new EmployeeDTO();
         eDto.setId(emp.getId().toString());
         eDto.setName(emp.getName());
+        eDto.setEmail(emp.getEmail());
         eDto.setDepartment(emp.getDepartment());
         eDto.setRole(emp.getRole());
         eDto.setLevel(emp.getLevel());
