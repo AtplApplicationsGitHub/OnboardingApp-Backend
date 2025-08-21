@@ -109,4 +109,9 @@ public class EmployeeController {
 		}
 	}
 
+	@PostMapping("/labSave/{lab}/{empId}")
+	public Boolean labSave(@PathVariable String lab,@PathVariable Long empId) throws Exception {
+		return employeeService.labSave(lab,empId);
+	}
+
 }

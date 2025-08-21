@@ -43,4 +43,12 @@ public class TaskController {
     public boolean freezeTask(@PathVariable String taskId) {
         return taskService.freezeTask(taskId);
     }
+
+    @PostMapping("/taskQuestionAnswer/{qId}/{response}")
+    public boolean taskQuestionAnswer(@PathVariable Long qId,@PathVariable String response) {
+        return taskService.taskQuestionAnswer(qId,response);
+    }
+
+
+
 }

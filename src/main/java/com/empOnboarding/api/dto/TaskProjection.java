@@ -11,4 +11,5 @@ public interface TaskProjection {
     Long getCompletedQuestions();
     Long getPendingQuestions();
     String getStatus();
+    String getFreeze();
 }
