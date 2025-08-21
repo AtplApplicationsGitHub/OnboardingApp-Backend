@@ -60,6 +60,7 @@ public class TaskService {
                 task.setUpdatedBy(actor);
                 task.setCreatedTime(now);
                 task.setUpdatedTime(now);
+                task.setFreezeTask("N");
                 Users lead = questionsList.get(0).getGroupId().getPgLead();
                 task.setAssignedTo(lead != null ? lead : actor);
                 for (Questions qn : questionsList) {
@@ -105,11 +106,15 @@ public class TaskService {
 
 
     @SuppressWarnings("unchecked")
-    public JSONObject filteredTaskForAdmin(String pageNo) {
+    public JSONObject filteredTaskForAdmin(String search,String pageNo) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         Page<TaskProjection> taskList;
-        taskList = taskRepository.findEmployeeTaskSummaries(pageable);
+        if(!CommonUtls.isCompletlyEmpty(search)){
+            taskList = taskRepository.findEmployeeTaskSummariesWithSearch(search,pageable);
+        }else{
+            taskList = taskRepository.findEmployeeTaskSummaries(pageable);
+        }
         json.put("commonListDto", taskList);
         json.put("totalElements", taskList.getTotalElements());
         return json;
@@ -185,6 +190,14 @@ public class TaskService {
         List<Task> t =  taskRepository.findAllById(tId);
         tDTOs = t.stream().map(this::populateTask).collect(Collectors.toList());
         return tDTOs;
+    }
+
+    public Boolean freezeTask(String id){
+        List<String> taskIdList = Arrays.stream(id.split(",")).toList();
+        List<Task> t =  taskRepository.findAllById(taskIdList);
+        t.forEach(task -> task.setFreezeTask("Y"));
+        taskRepository.saveAll(t);
+        return true;
     }
 
     public boolean reassignTask(String taskId, Long id){

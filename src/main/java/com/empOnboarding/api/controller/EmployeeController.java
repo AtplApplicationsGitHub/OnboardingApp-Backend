@@ -6,7 +6,6 @@ import javax.servlet.http.HttpServletResponse;
 import com.empOnboarding.api.dto.PdfDTO;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import com.empOnboarding.api.utils.CommonUtls;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatus;
@@ -99,7 +98,6 @@ public class EmployeeController {
 		commonDto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
 
 		try (InputStream in = file.getInputStream();
-			 // WorkbookFactory handles both .xls and .xlsx
 			 Workbook workbook = WorkbookFactory.create(in)) {
 
 			JSONObject json = employeeService.readExcelFile(workbook, commonDto,user);
