@@ -2,16 +2,24 @@ package com.empOnboarding.api.utils;
 
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 import com.empOnboarding.api.dto.CommonDTO;
 import com.empOnboarding.api.security.UserPrincipal;
+import org.apache.commons.lang3.builder.Diff;
+import org.apache.commons.lang3.builder.DiffResult;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.stereotype.Component;
 
 @Component
 public class CommonUtls {
 
+	private static ModelMapper modelMapper = null;
 
 	public static boolean trueIfOne(int value) {
 		return value == 1;
@@ -88,7 +96,46 @@ public class CommonUtls {
 		}
 		return timestamp;
 	}
-	
+
+	public static ModelMapper getModelMapper() {
+		if (modelMapper == null) {
+			modelMapper = new ModelMapper();
+			modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+
+		}
+		return modelMapper;
+	}
+
+	public static String getDiff(DiffResult<?> diffResult) {
+		try {
+			if (isEmpty(diffResult))
+				return "";
+			List<String> list = new ArrayList<>();
+			for (Diff<?> diff : diffResult.getDiffs()) {
+				if (!CommonUtls.isCompletlyEmpty(diff.getFieldName())) {
+					StringBuilder data = new StringBuilder(diff.getFieldName() + " : ");
+					if (isEmpty(diff.getLeft()) && !isEmpty(diff.getRight())) {
+						data.append(diff.getRight() + Constants.AUDIT_ADD_DELIMITER);
+						list.add(data.toString());
+					}
+					if (!isEmpty(diff.getLeft()) && isEmpty(diff.getRight())) {
+						data.append(diff.getLeft() + Constants.AUDIT_REMOVE_DELIMITER);
+						list.add(data.toString());
+					}
+					if (!isEmpty(diff.getLeft()) && !isEmpty(diff.getRight())) {
+						data.append(diff.getLeft() + " has changed to " + diff.getRight() + Constants.AUDIT_DELIMITER);
+						list.add(data.toString());
+					}
+				}
+			}
+			return list.stream().collect(Collectors.joining(""));
+		} catch (Exception e) {
+		}
+		return "";
+	}
+
+
+
 	public static String convertTime(Date date) {
 		String convertedDate = "";
 		try {

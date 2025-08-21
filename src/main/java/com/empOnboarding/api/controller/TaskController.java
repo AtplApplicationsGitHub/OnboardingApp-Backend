@@ -26,7 +26,7 @@ public class TaskController {
 
     @PostMapping("/filteredTaskForAdmin/{search}/{pageNo}")
     public JSONObject filteredTaskForAdmin(@PathVariable String search,@PathVariable String pageNo) {
-        return taskService.filteredTaskForAdmin(pageNo);
+        return taskService.filteredTaskForAdmin(search,pageNo);
     }
 
     @GetMapping("/findById/{id}")
@@ -34,8 +34,13 @@ public class TaskController {
         return taskService.findById(id);
     }
 
-    @GetMapping("/reassignTask/{id}")
-    public boolean reassignTask(@PathVariable String reassignTask,@PathVariable Long id) {
-        return taskService.reassignTask(reassignTask,id);
+    @GetMapping("/reassignTask/{taskId}/{id}")
+    public boolean reassignTask(@PathVariable String taskId,@PathVariable Long id) {
+        return taskService.reassignTask(taskId,id);
+    }
+
+    @GetMapping("/freezeTask/{taskId}")
+    public boolean freezeTask(@PathVariable String taskId) {
+        return taskService.freezeTask(taskId);
     }
 }

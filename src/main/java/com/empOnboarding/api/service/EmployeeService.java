@@ -59,7 +59,7 @@ public class EmployeeService {
 
     public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user){
         List<Employee> eDto = new ArrayList<>();
-        Employee emp = new Employee(null, empDto.getName(),empDto.getEmail(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
+        Employee emp = new Employee(null, empDto.getEmail(),empDto.getName(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
                 empDto.getTotalExperience(), empDto.getPastOrganization(), empDto.getLabAllocation(), empDto.getComplainceDay(),
                 LocalDate.parse(empDto.getDate()), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
         employeeRepositrory.save(emp);
@@ -192,7 +192,7 @@ public class EmployeeService {
         String SHEET_NAME = "Add Employee Sample Download";
         String documentFileName = SHEET_NAME + ".xls";
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        List<String> headers = Arrays.asList("Candidate Name", "DOJ", "Department", "Role", "Level",
+        List<String> headers = Arrays.asList("Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
                 "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day");
 
         HSSFWorkbook workbook = new HSSFWorkbook();
@@ -232,6 +232,7 @@ public class EmployeeService {
     }
 
     private static final String COL_NAME                = "name";
+    private static final String COL_EMAIL               = "email";
     private static final String COL_DEPARTMENT          = "department";
     private static final String COL_ROLE                = "role";
     private static final String COL_LEVEL               = "level";
@@ -242,23 +243,21 @@ public class EmployeeService {
     private static final String COL_DATE_OF_JOINING     = "date_of_joining";
 
     private static final Map<String, String> HEADER_ALIASES = Map.ofEntries(
-            Map.entry("Candidate Name", COL_NAME),
+            Map.entry("candidate name", COL_NAME),
             Map.entry("name", COL_NAME),
-            Map.entry("DOJ", COL_DATE_OF_JOINING),
+            Map.entry("email", COL_EMAIL),
+            Map.entry("doj", COL_DATE_OF_JOINING),
             Map.entry("date_of_joining", COL_DATE_OF_JOINING),
-            Map.entry("Department", COL_DEPARTMENT),
             Map.entry("department", COL_DEPARTMENT),
-            Map.entry("Role", COL_ROLE),
             Map.entry("role", COL_ROLE),
-            Map.entry("Level", COL_LEVEL),
             Map.entry("level", COL_LEVEL),
-            Map.entry("Total Experience", COL_TOTAL_EXPERIENCE),
+            Map.entry("total experience", COL_TOTAL_EXPERIENCE),
             Map.entry("total_experience", COL_TOTAL_EXPERIENCE),
-            Map.entry("Past Organization", COL_PAST_ORGANIZATION),
+            Map.entry("past organization", COL_PAST_ORGANIZATION),
             Map.entry("past_organization", COL_PAST_ORGANIZATION),
-            Map.entry("Lab Allocation", COL_LAB_ALLOCATION),
+            Map.entry("lab allocation", COL_LAB_ALLOCATION),
             Map.entry("lab_allocation", COL_LAB_ALLOCATION),
-            Map.entry("Compliance Day", COL_COMPLIANCE_DAY),
+            Map.entry("compliance day", COL_COMPLIANCE_DAY),
             Map.entry("compliance_day", COL_COMPLIANCE_DAY)
 
     );
@@ -272,7 +271,7 @@ public class EmployeeService {
 
     @SuppressWarnings("unchecked")
     @Transactional
-    public JSONObject readExcelFile(XSSFWorkbook workbook, CommonDTO commonDto) {
+    public JSONObject readExcelFile(Workbook workbook, CommonDTO commonDto, UserPrincipal user) {
         JSONObject result = new JSONObject();
         JSONArray errors = new JSONArray();
         List<Employee> toPersist = new ArrayList<>();
@@ -307,6 +306,7 @@ public class EmployeeService {
 
                 try {
                     String name              = getCellString(row, colIndex.get(COL_NAME));
+                    String email             = getCellString(row, colIndex.get(COL_EMAIL));
                     String department        = getCellString(row, colIndex.get(COL_DEPARTMENT));
                     String role              = getCellString(row, colIndex.get(COL_ROLE));
                     String level             = getCellString(row, colIndex.get(COL_LEVEL));
@@ -327,6 +327,7 @@ public class EmployeeService {
                     // Build entity
                     Employee emp = new Employee();
                     emp.setName(name);
+                    emp.setEmail(email);
                     emp.setDepartment(nullIfBlank(department));
                     emp.setRole(nullIfBlank(role));
                     emp.setLevel(nullIfBlank(level));
@@ -346,10 +347,9 @@ public class EmployeeService {
                     errors.put(errorJson(r + 1, rowEx.getMessage())); // +1 for human row number
                 }
             }
-
-            // 3) Persist valid rows
             if (!toPersist.isEmpty()) {
                 employeeRepositrory.saveAll(toPersist);
+                taskService.createTask(toPersist,user);
             }
 
             result.put("successCount", success);

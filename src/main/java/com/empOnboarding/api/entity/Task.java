@@ -55,5 +55,7 @@ public class Task {
     @JoinColumn(name = "created_by", referencedColumnName = "id")
     private Users createdBy;
 
+    @Column(name = "freeze_task")
+    private String freezeTask;
 
 }
