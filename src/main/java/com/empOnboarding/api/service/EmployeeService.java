@@ -481,4 +481,12 @@ public class EmployeeService {
             throw new IllegalArgumentException("Invalid date: " + s + " (expected yyyy-MM-dd, dd-MM-yyyy, dd/MM/yyyy, or MM/dd/yyyy)");
         }
     }
+
+    public Boolean labSave(String lab,Long empId){
+        Employee e = employeeRepositrory.getReferenceById(empId);
+        e.setLabAllocation(lab);
+        e.setUpdatedTime(new Date());
+        employeeRepositrory.save(e);
+        return true;
+    }
 }

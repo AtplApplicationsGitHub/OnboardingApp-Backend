@@ -18,6 +18,7 @@ import java.util.List;
 public class TaskDTO {
 
 	private String id;
+	private long employeeId;
 	private String employeeName;
 	private String groupName;
 	private String level;
@@ -28,6 +29,7 @@ public class TaskDTO {
 	private String prevCompany;
 	private String complianceDay;
 	private String assignedTo;
+	private String freezeTask;
 	private int totalQuestions;
 	private long completedQuestions;
 	private String status;

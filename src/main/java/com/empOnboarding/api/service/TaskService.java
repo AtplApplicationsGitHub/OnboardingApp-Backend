@@ -23,6 +23,8 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
 
+    private final TaskQuestionRepository taskQuestionRepository;
+
     private final UsersRepository usersRepository;
 
     private final QuestionRepository questionRepository;
@@ -31,13 +33,14 @@ public class TaskService {
 
     private final GroupRepository groupRepository;
 
-    public TaskService(TaskRepository taskRepository, UsersRepository usersRepository, QuestionRepository questionRepository,
+    public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository,UsersRepository usersRepository, QuestionRepository questionRepository,
                        ConstantRepository constantRepository,GroupRepository groupRepository) {
         this.taskRepository = taskRepository;
         this.usersRepository = usersRepository;
         this.questionRepository = questionRepository;
         this.constantRepository = constantRepository;
         this.groupRepository = groupRepository;
+        this.taskQuestionRepository = taskQuestionRepository;
     }
 
     @Transactional
@@ -128,6 +131,7 @@ public class TaskService {
         Employee e = task.getEmployeeId();
         tDto.setId(task.getId());
         tDto.setGroupName(task.getGroupId().getName());
+        tDto.setEmployeeId(e.getId());
         tDto.setEmployeeName(e.getName());
         tDto.setLevel(e.getLevel());
         tDto.setDepartment(e.getDepartment());
@@ -137,6 +141,7 @@ public class TaskService {
         tDto.setPrevCompany(e.getPastOrganization());
         tDto.setComplianceDay(e.getComplainceDay());
         tDto.setAssignedTo(task.getAssignedTo().getName());
+        tDto.setFreezeTask(task.getFreezeTask());
         Set<TaskQuestions> tq = task.getTaskQuestions();
         long completed = tq.stream()
                 .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
@@ -210,5 +215,12 @@ public class TaskService {
             result = true;
         }
         return result;
+    }
+
+    public boolean taskQuestionAnswer(Long qId, String response){
+        TaskQuestions tq = taskQuestionRepository.getReferenceById(qId);
+        tq.setResponse(response);
+        taskQuestionRepository.save(tq);
+        return true;
     }
 }

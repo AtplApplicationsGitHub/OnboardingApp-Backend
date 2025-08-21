@@ -24,6 +24,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         e.department                           AS department,
         e."role"                               AS role,
         e."level"                              AS level,
+        t.freeze_task                          AS freeze,
         t.id                                   AS task_id,
         t.created_time                         AS created_time,
         tq.id                                  AS tq_id,
@@ -39,7 +40,6 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       JOIN task            t  ON t.employee_id = e.id
       JOIN task_questions  tq ON tq.task_id     = t.id
       JOIN questions       q  ON q.id           = tq.question_id
-      WHERE t.freeze_task = 'N'
     )
     SELECT
       r.employeeId                               AS employeeId,
@@ -47,6 +47,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       r.department                               AS department,
       r.role                                     AS role,
       r.level                                    AS level,
+      r.freeze                              	 AS freeze,
       STRING_AGG(DISTINCT CAST(r.task_id AS text), ',')          AS taskIds,
       COUNT(r.tq_id)                                             AS totalQuestions,
       COUNT(*) FILTER (WHERE r.tq_status = 'completed')          AS completedQuestions,
@@ -61,7 +62,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         ELSE 'In Progress'
       END                                                       AS status
     FROM qrows r
-    GROUP BY r.employeeId, r.name, r.department, r.role, r.level
+    GROUP BY r.employeeId, r.name, r.department, r.role, r.level, r.freeze
     ORDER BY MAX(r.created_time) ASC
     """,
             countQuery = """
@@ -72,6 +73,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         e.department                           AS department,
         e."role"                               AS role,
         e."level"                              AS level,
+        t.freeze_task                          AS freeze,
         t.id                                   AS task_id,
         t.created_time                         AS created_time,
         tq.id                                  AS tq_id,
@@ -86,12 +88,11 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       JOIN task            t  ON t.employee_id = e.id
       JOIN task_questions  tq ON tq.task_id     = t.id
       JOIN questions       q  ON q.id           = tq.question_id
-      WHERE t.freeze_task = 'N'
     )
     SELECT COUNT(*) FROM (
       SELECT 1
       FROM qrows r
-      GROUP BY r.employeeId, r.name, r.department, r.role, r.level
+      GROUP BY r.employeeId, r.name, r.department, r.role, r.level, r.freeze
     ) sub
     """,
             nativeQuery = true
@@ -107,6 +108,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         e.department                           AS department,
         e."role"                               AS role,
         e."level"                              AS level,
+        t.freeze_task                          AS freeze,
         t.id                                   AS task_id,
         t.created_time                         AS created_time,
         tq.id                                  AS tq_id,
@@ -122,7 +124,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       JOIN task            t  ON t.employee_id = e.id
       JOIN task_questions  tq ON tq.task_id     = t.id
       JOIN questions       q  ON q.id           = tq.question_id
-      WHERE t.freeze_task = 'N' AND (e."name" ILIKE CONCAT('%', :keyword, '%') OR
+      WHERE (e."name" ILIKE CONCAT('%', :keyword, '%') OR
       e.department ILIKE CONCAT('%', :keyword, '%') OR e."role" ILIKE CONCAT('%', :keyword, '%') OR
       e."level" ILIKE CONCAT('%', :keyword, '%'))
     )
@@ -132,6 +134,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       r.department                               AS department,
       r.role                                     AS role,
       r.level                                    AS level,
+      r.freeze                              	 AS freeze,
       STRING_AGG(DISTINCT CAST(r.task_id AS text), ',')          AS taskIds,
       COUNT(r.tq_id)                                             AS totalQuestions,
       COUNT(*) FILTER (WHERE r.tq_status = 'completed')          AS completedQuestions,
@@ -146,7 +149,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         ELSE 'In Progress'
       END                                                       AS status
     FROM qrows r
-    GROUP BY r.employeeId, r.name, r.department, r.role, r.level
+    GROUP BY r.employeeId, r.name, r.department, r.role, r.level, r.freeze
     ORDER BY MAX(r.created_time) ASC
     """,
             countQuery = """
@@ -157,6 +160,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         e.department                           AS department,
         e."role"                               AS role,
         e."level"                              AS level,
+        t.freeze_task                          AS freeze,
         t.id                                   AS task_id,
         t.created_time                         AS created_time,
         tq.id                                  AS tq_id,
@@ -171,14 +175,14 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       JOIN task            t  ON t.employee_id = e.id
       JOIN task_questions  tq ON tq.task_id     = t.id
       JOIN questions       q  ON q.id           = tq.question_id
-      WHERE t.freeze_task = 'N' AND (e."name" ILIKE CONCAT('%', :keyword, '%') OR
+      WHERE (e."name" ILIKE CONCAT('%', :keyword, '%') OR
       e.department ILIKE CONCAT('%', :keyword, '%') OR e."role" ILIKE CONCAT('%', :keyword, '%') OR
       e."level" ILIKE CONCAT('%', :keyword, '%'))
     )
     SELECT COUNT(*) FROM (
       SELECT 1
       FROM qrows r
-      GROUP BY r.employeeId, r.name, r.department, r.role, r.level
+      GROUP BY r.employeeId, r.name, r.department, r.role, r.level, r.freeze
     ) sub
     """,
             nativeQuery = true
