@@ -20,6 +20,7 @@ public class TaskQuestionsDTO {
     private String id;
     private String questionId;
     private String response;
+    private String responseType;
     private String status;
     private String complianceDay;
     private Boolean overDueFlag;

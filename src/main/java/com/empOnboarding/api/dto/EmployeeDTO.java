@@ -23,8 +23,9 @@ public class EmployeeDTO {
 	private String totalExperience;
 	private String pastOrganization;
 	private String labAllocation;
-	private String complainceDay;
+	private String complianceDay;
 	private String createdTime;
 	private String updatedTime;
+	private Boolean deleteFlag;
 	
 }
