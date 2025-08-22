@@ -24,7 +24,7 @@ public class TaskController {
     @PostMapping("/findFilteredTask/{search}/{pageNo}")
     public JSONObject findFilteredGroups(@PathVariable String search, @PathVariable String pageNo,
                                          @CurrentUser UserPrincipal user) {
-        return taskService.filteredTask(user.getId(),pageNo);
+        return taskService.filteredTask(search,user.getId(),pageNo);
     }
 
     @PostMapping("/filteredTaskForAdmin/{search}/{pageNo}")

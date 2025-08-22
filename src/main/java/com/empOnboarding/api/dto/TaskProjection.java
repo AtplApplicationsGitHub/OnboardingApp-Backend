@@ -12,4 +12,5 @@ public interface TaskProjection {
     Long getPendingQuestions();
     String getStatus();
     String getFreeze();
+    Boolean getFreezeButton();
 }

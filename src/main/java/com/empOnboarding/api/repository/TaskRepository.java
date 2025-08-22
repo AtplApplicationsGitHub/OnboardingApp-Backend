@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.empOnboarding.api.entity.Groups;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TaskRepository extends JpaRepository<Task, String> {
 
@@ -189,6 +190,48 @@ public interface TaskRepository extends JpaRepository<Task, String> {
             nativeQuery = true
     )
     Page<TaskProjection> findEmployeeTaskSummariesWithSearch(String keyword, Pageable pageable);
+
+
+    @Query(value = "SELECT t.*, " +
+            "       CASE " +
+            "         WHEN COUNT(tq.id) > 0 AND BOOL_AND(LOWER(COALESCE(tq.status, '')) = 'completed') " +
+            "         THEN TRUE " +
+            "         ELSE FALSE " +
+            "       END AS freeze_button " +
+            "FROM task t " +
+            "LEFT JOIN employee e ON e.id = t.employee_id " +
+            "LEFT JOIN groups g   ON g.id = t.group_id " +
+            "LEFT JOIN task_questions tq ON tq.task_id = t.id " +   // <-- correct table.column names
+            "WHERE t.assigned_to = :id " +
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "      e.name       ILIKE CONCAT('%', :keyword, '%') OR " +
+            "      e.role       ILIKE CONCAT('%', :keyword, '%') OR " +
+            "      e.department ILIKE CONCAT('%', :keyword, '%') OR " +
+            "      e.level      ILIKE CONCAT('%', :keyword, '%') OR " +
+            "      CAST(t.id AS TEXT) ILIKE CONCAT('%', :keyword, '%') OR " +
+            "      g.name       ILIKE CONCAT('%', :keyword, '%') " +
+            ") " +
+            "GROUP BY t.id, e.id, g.id " +
+            "ORDER BY t.created_time DESC",
+            countQuery = "SELECT COUNT(DISTINCT t.id) " +
+                    "FROM task t " +
+                    "LEFT JOIN employee e ON e.id = t.employee_id " +
+                    "LEFT JOIN groups g   ON g.id = t.group_id " +
+                    "LEFT JOIN task_questions tq ON tq.task_id = t.id " +
+                    "WHERE t.assigned_to = :id " +
+                    "AND (:keyword IS NULL OR :keyword = '' OR " +
+                    "      e.name       ILIKE CONCAT('%', :keyword, '%') OR " +
+                    "      e.role       ILIKE CONCAT('%', :keyword, '%') OR " +
+                    "      e.department ILIKE CONCAT('%', :keyword, '%') OR " +
+                    "      e.level      ILIKE CONCAT('%', :keyword, '%') OR " +
+                    "      CAST(t.id AS TEXT) ILIKE CONCAT('%', :keyword, '%') OR " +
+                    "      g.name       ILIKE CONCAT('%', :keyword, '%') " +
+                    ")",
+            nativeQuery = true)
+    Page<Task> findAllBySearch(@Param("keyword") String keyword,
+                               @Param("id") Long id,
+                               Pageable pageable);
+
 
 
     Boolean existsByEmployeeId(Employee emp);

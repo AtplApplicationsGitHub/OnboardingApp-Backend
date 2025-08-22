@@ -94,12 +94,16 @@ public class TaskService {
     }
 
     @SuppressWarnings("unchecked")
-    public JSONObject filteredTask(Long glId,String pageNo) {
+    public JSONObject filteredTask(String search,Long glId,String pageNo) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         List<TaskDTO> dtoList;
         Page<Task> taskList;
-        taskList = taskRepository.findAllByAssignedToIdOrderByCreatedTimeDesc(glId,pageable);
+        if(!CommonUtls.isCompletlyEmpty(search)){
+            taskList = taskRepository.findAllBySearch(search,glId,pageable);
+        }else{
+            taskList = taskRepository.findAllByAssignedToIdOrderByCreatedTimeDesc(glId,pageable);
+        }
         dtoList = taskList.stream().map(this::populateTask).collect(Collectors.toList());
         json.put("commonListDto", dtoList);
         json.put("totalElements", taskList.getTotalElements());
@@ -143,6 +147,9 @@ public class TaskService {
         tDto.setAssignedTo(task.getAssignedTo().getName());
         tDto.setFreezeTask(task.getFreezeTask());
         Set<TaskQuestions> tq = task.getTaskQuestions();
+        boolean allCompleted = tq.stream()
+                    .allMatch(q -> "completed".equalsIgnoreCase(q.getStatus()));
+        task.setFreezeButton(allCompleted);
         long completed = tq.stream()
                 .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
                 .count();
