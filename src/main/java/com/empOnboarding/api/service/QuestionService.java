@@ -62,7 +62,7 @@ public class QuestionService {
 		QuestionsDTO qDto = new QuestionsDTO();
 		qDto.setId(ques.getId().toString());
 		qDto.setText(ques.getText());
-		qDto.setPeriod(ques.getResponse());
+		qDto.setPeriod(ques.getPeriod());
 		qDto.setResponse(ques.getResponse());
 		qDto.setGroupId(ques.getGroupId().getId().toString());
 		
