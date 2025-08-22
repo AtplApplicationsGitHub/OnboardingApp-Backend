@@ -39,6 +39,8 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepositrory;
 
+    private final TaskRepository taskRepository;
+
     private final AuditTrailService auditTrailService;
 
     private final ConstantRepository constantRepository;
@@ -49,18 +51,20 @@ public class EmployeeService {
 
 
     public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
-                           ConstantRepository constantRepository, MailerService mailerService, TaskService taskService) {
+                           ConstantRepository constantRepository, MailerService mailerService, TaskService taskService,
+                           TaskRepository taskRepository) {
         this.employeeRepositrory = employeeRepositrory;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
         this.mailerService = mailerService;
         this.taskService = taskService;
+        this.taskRepository = taskRepository;
     }
 
     public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user){
         List<Employee> eDto = new ArrayList<>();
         Employee emp = new Employee(null, empDto.getEmail(),empDto.getName(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
-                empDto.getTotalExperience(), empDto.getPastOrganization(), empDto.getLabAllocation(), empDto.getComplainceDay(),
+                empDto.getTotalExperience(), empDto.getPastOrganization(), empDto.getLabAllocation(), empDto.getComplianceDay(),
                 LocalDate.parse(empDto.getDate()), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
         employeeRepositrory.save(emp);
         eDto.add(emp);
@@ -111,12 +115,14 @@ public class EmployeeService {
         eDto.setTotalExperience(emp.getTotalExperience());
         eDto.setPastOrganization(emp.getPastOrganization());
         eDto.setLabAllocation(emp.getLabAllocation());
+        eDto.setComplianceDay(emp.getComplainceDay());
         Constant c = constantRepository.findByConstant("DateFormat");
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
         String date = emp.getDate().format(formatter);
         eDto.setDate(date);
         eDto.setCreatedTime(CommonUtls.datetoString(emp.getCreatedTime(), c.getConstantValue()));
         eDto.setUpdatedTime(CommonUtls.datetoString(emp.getUpdatedTime(), c.getConstantValue()));
+        eDto.setDeleteFlag(!taskRepository.existsByEmployeeId(emp));
         return eDto;
     }
 
@@ -148,13 +154,14 @@ public class EmployeeService {
     private static Employee getEmployee(EmployeeDTO eDto, UserPrincipal userp, Optional<Employee> eOpt) {
         Employee e = eOpt.get();
         e.setName(eDto.getName());
+        e.setDate(LocalDate.parse(eDto.getDate()));
         e.setDepartment(eDto.getDepartment());
         e.setRole(eDto.getRole());
         e.setLevel(eDto.getLevel());
         e.setTotalExperience(eDto.getTotalExperience());
         e.setPastOrganization(eDto.getPastOrganization());
         e.setLabAllocation(eDto.getLabAllocation());
-        e.setComplainceDay(eDto.getComplainceDay());
+        e.setComplainceDay(eDto.getComplianceDay());
         e.setUpdatedTime(new Date());
         e.setUpdatedBy(new Users(userp.getId()));
         return e;

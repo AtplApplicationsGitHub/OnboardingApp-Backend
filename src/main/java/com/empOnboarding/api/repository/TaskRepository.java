@@ -1,6 +1,7 @@
 package com.empOnboarding.api.repository;
 
 import com.empOnboarding.api.dto.TaskProjection;
+import com.empOnboarding.api.entity.Employee;
 import com.empOnboarding.api.entity.Task;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +14,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
 
     Task findTopByIdStartingWithOrderByIdDesc(String prefix);
 
-    Page<Task> findAllByOrderByCreatedTimeDesc(Pageable pageable);
+    Page<Task> findAllByAssignedToIdOrderByCreatedTimeDesc(Long id,Pageable pageable);
 
     @Query(
             value = """
@@ -190,6 +191,5 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     Page<TaskProjection> findEmployeeTaskSummariesWithSearch(String keyword, Pageable pageable);
 
 
-
-
+    Boolean existsByEmployeeId(Employee emp);
 }

@@ -1,6 +1,8 @@
 package com.empOnboarding.api.controller;
 import com.empOnboarding.api.dto.EmployeeDTO;
 import com.empOnboarding.api.dto.TaskDTO;
+import com.empOnboarding.api.security.CurrentUser;
+import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.service.TaskService;
 import org.json.simple.JSONObject;
 import org.springframework.web.bind.annotation.*;
@@ -20,8 +22,9 @@ public class TaskController {
     }
 
     @PostMapping("/findFilteredTask/{search}/{pageNo}")
-    public JSONObject findFilteredGroups(@PathVariable String search,@PathVariable String pageNo) {
-        return taskService.filteredTask(pageNo);
+    public JSONObject findFilteredGroups(@PathVariable String search, @PathVariable String pageNo,
+                                         @CurrentUser UserPrincipal user) {
+        return taskService.filteredTask(user.getId(),pageNo);
     }
 
     @PostMapping("/filteredTaskForAdmin/{search}/{pageNo}")

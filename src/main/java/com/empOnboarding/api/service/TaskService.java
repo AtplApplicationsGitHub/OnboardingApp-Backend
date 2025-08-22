@@ -94,12 +94,12 @@ public class TaskService {
     }
 
     @SuppressWarnings("unchecked")
-    public JSONObject filteredTask(String pageNo) {
+    public JSONObject filteredTask(Long glId,String pageNo) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         List<TaskDTO> dtoList;
         Page<Task> taskList;
-        taskList = taskRepository.findAllByOrderByCreatedTimeDesc(pageable);
+        taskList = taskRepository.findAllByAssignedToIdOrderByCreatedTimeDesc(glId,pageable);
         dtoList = taskList.stream().map(this::populateTask).collect(Collectors.toList());
         json.put("commonListDto", dtoList);
         json.put("totalElements", taskList.getTotalElements());
@@ -168,7 +168,6 @@ public class TaskService {
         dto.setId(taskQuestions.getId().toString());
         dto.setQuestionId(taskQuestions.getQuestionId().getText());
 
-        // Determine sign
         int offsetDays = taskQuestions.getQuestionId().getPeriod().equalsIgnoreCase("after")
                 ?  Integer.parseInt(taskQuestions.getQuestionId().getComplainceDay())
                 : -Integer.parseInt(taskQuestions.getQuestionId().getComplainceDay());
@@ -180,7 +179,7 @@ public class TaskService {
         Constant c = constantRepository.findByConstant("DateFormat");
         String formattedDate = CommonUtls.datetoString(utilDate, c.getConstantValue());
         dto.setComplianceDay(formattedDate);
-
+        dto.setResponseType(taskQuestions.getQuestionId().getResponse());
         dto.setResponse(taskQuestions.getResponse());
         dto.setStatus(taskQuestions.getStatus());
 
@@ -220,6 +219,7 @@ public class TaskService {
     public boolean taskQuestionAnswer(Long qId, String response){
         TaskQuestions tq = taskQuestionRepository.getReferenceById(qId);
         tq.setResponse(response);
+        tq.setStatus("completed");
         taskQuestionRepository.save(tq);
         return true;
     }
