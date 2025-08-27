@@ -58,7 +58,4 @@ public class Task {
     @Column(name = "freeze_task")
     private String freezeTask;
 
-    @Transient
-    private Boolean freezeButton;
-
 }

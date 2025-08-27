@@ -1,5 +1,7 @@
 package com.empOnboarding.api.dto;
 
+import java.time.LocalDate;
+
 public interface TaskProjection {
     Long getEmployeeId();
     String getName();
@@ -13,4 +15,7 @@ public interface TaskProjection {
     String getStatus();
     String getFreeze();
     Boolean getFreezeButton();
+    LocalDate getDoj();
+    String getLab();
+
 }

@@ -25,6 +25,8 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         e."name"                               AS name,
         e.department                           AS department,
         e."role"                               AS role,
+        e.date_of_joining                      AS doj,
+        e.lab_allocation                       AS lab,           
         e."level"                              AS level,
         t.freeze_task                          AS freeze,
         t.id                                   AS task_id,
@@ -49,6 +51,8 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       r.department                               AS department,
       r.role                                     AS role,
       r.level                                    AS level,
+      r.doj                                      AS doj,
+      r.lab                                      AS lab,
       r.freeze                              	 AS freeze,
       STRING_AGG(DISTINCT CAST(r.task_id AS text), ',')          AS taskIds,
       COUNT(r.tq_id)                                             AS totalQuestions,
@@ -64,7 +68,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         ELSE 'In Progress'
       END                                                       AS status
     FROM qrows r
-    GROUP BY r.employeeId, r.name, r.department, r.role, r.level, r.freeze
+    GROUP BY r.employeeId, r.name, r.department, r.role, r.level, r.lab,r.doj,r.freeze
     ORDER BY MAX(r.created_time) ASC
     """,
             countQuery = """
@@ -75,6 +79,8 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         e.department                           AS department,
         e."role"                               AS role,
         e."level"                              AS level,
+        e.date_of_joining                      AS doj,
+        e.lab_allocation                       AS lab,
         t.freeze_task                          AS freeze,
         t.id                                   AS task_id,
         t.created_time                         AS created_time,
@@ -94,7 +100,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     SELECT COUNT(*) FROM (
       SELECT 1
       FROM qrows r
-      GROUP BY r.employeeId, r.name, r.department, r.role, r.level, r.freeze
+      GROUP BY r.employeeId, r.name, r.department, r.role, r.level,r.doj,r.lab, r.freeze
     ) sub
     """,
             nativeQuery = true
@@ -110,6 +116,8 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         e.department                           AS department,
         e."role"                               AS role,
         e."level"                              AS level,
+        e.date_of_joining                      AS doj,
+        e.lab_allocation                       AS lab,
         t.freeze_task                          AS freeze,
         t.id                                   AS task_id,
         t.created_time                         AS created_time,
@@ -136,6 +144,8 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       r.department                               AS department,
       r.role                                     AS role,
       r.level                                    AS level,
+      r.doj                                      AS doj,
+      r.lab                                      AS lab,
       r.freeze                              	 AS freeze,
       STRING_AGG(DISTINCT CAST(r.task_id AS text), ',')          AS taskIds,
       COUNT(r.tq_id)                                             AS totalQuestions,
@@ -151,7 +161,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         ELSE 'In Progress'
       END                                                       AS status
     FROM qrows r
-    GROUP BY r.employeeId, r.name, r.department, r.role, r.level, r.freeze
+    GROUP BY r.employeeId, r.name, r.department, r.role, r.level,r.doj,r.lab, r.freeze
     ORDER BY MAX(r.created_time) ASC
     """,
             countQuery = """
@@ -162,6 +172,8 @@ public interface TaskRepository extends JpaRepository<Task, String> {
         e.department                           AS department,
         e."role"                               AS role,
         e."level"                              AS level,
+        e.date_of_joining                      AS doj,
+        e.lab_allocation                       AS lab,
         t.freeze_task                          AS freeze,
         t.id                                   AS task_id,
         t.created_time                         AS created_time,
@@ -184,7 +196,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     SELECT COUNT(*) FROM (
       SELECT 1
       FROM qrows r
-      GROUP BY r.employeeId, r.name, r.department, r.role, r.level, r.freeze
+      GROUP BY r.employeeId, r.name, r.department, r.role, r.level,r.doj,r.lab, r.freeze
     ) sub
     """,
             nativeQuery = true
@@ -192,12 +204,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     Page<TaskProjection> findEmployeeTaskSummariesWithSearch(String keyword, Pageable pageable);
 
 
-    @Query(value = "SELECT t.*, " +
-            "       CASE " +
-            "         WHEN COUNT(tq.id) > 0 AND BOOL_AND(LOWER(COALESCE(tq.status, '')) = 'completed') " +
-            "         THEN TRUE " +
-            "         ELSE FALSE " +
-            "       END AS freeze_button " +
+    @Query(value = "SELECT t.* " +
             "FROM task t " +
             "LEFT JOIN employee e ON e.id = t.employee_id " +
             "LEFT JOIN groups g   ON g.id = t.group_id " +
@@ -235,4 +242,6 @@ public interface TaskRepository extends JpaRepository<Task, String> {
 
 
     Boolean existsByEmployeeId(Employee emp);
+
+    Page<Task> findAllByEmployeeIdIdOrderByCreatedTimeDesc(Long eId, Pageable pageable);
 }

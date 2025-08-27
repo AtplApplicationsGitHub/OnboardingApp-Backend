@@ -38,8 +38,5 @@ public class TaskDTO {
 	private String createdTime;
 	private String updatedTime;
 	private List<String> taskId;
-	private Boolean freezeButton;
-
-
 
 }
