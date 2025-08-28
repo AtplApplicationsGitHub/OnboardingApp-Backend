@@ -47,11 +47,13 @@ public class EmployeeService {
 
     private final TaskService taskService;
 
+    private final EmployeeFeedbackRepository employeeFeedbackRepository;
+
 
     public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
                            ConstantRepository constantRepository,EmployeeQuestionService employeeQuestionService,
-                           MailerService mailerService, TaskService taskService,
-                           TaskRepository taskRepository) {
+                           MailerService mailerService, TaskService taskService, TaskRepository taskRepository,
+                           EmployeeFeedbackRepository employeeFeedbackRepository) {
         this.employeeRepositrory = employeeRepositrory;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
@@ -59,6 +61,7 @@ public class EmployeeService {
         this.mailerService = mailerService;
         this.taskService = taskService;
         this.taskRepository = taskRepository;
+        this.employeeFeedbackRepository = employeeFeedbackRepository;
     }
 
     public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user) {
@@ -578,6 +581,14 @@ public class EmployeeService {
         e.setLabAllocation(lab);
         e.setUpdatedTime(new Date());
         employeeRepositrory.save(e);
+        return true;
+    }
+
+    public Boolean saveEmployeeFeedback(String star, String feedback, String taskId,Long id){
+        Task t = taskRepository.getReferenceById(taskId);
+        Employee e = employeeRepositrory.getReferenceById(id);
+        EmployeeFeedback ef = new EmployeeFeedback(id,star,feedback,t,e,new Date());
+        employeeFeedbackRepository.save(ef);
         return true;
     }
 

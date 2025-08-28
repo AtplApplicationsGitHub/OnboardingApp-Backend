@@ -21,25 +21,28 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import static javax.persistence.GenerationType.IDENTITY;
+
 @Getter
 @Setter
 @Entity
 @Table(name = "login_otp_log")
 @AllArgsConstructor
 @NoArgsConstructor
-public class LoginOTPLog {
+public class LoginOTPLog implements java.io.Serializable {
 
+	private static final long serialVersionUID = 1L;
 	@Id
-	@GeneratedValue(generator = "UUID")
-	@Type(type = "org.hibernate.type.UUIDCharType")
-	@Column(name = "id", columnDefinition = "VARCHAR(255)")
-	private UUID id;
+	@GeneratedValue(strategy = IDENTITY)
+	@Column(name = "id", unique = true, nullable = false)
+	private Long id;
+
 
 	@Column(name = "otp")
 	private String otp;
 	
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id", nullable = true, referencedColumnName = "id")
+	@JoinColumn(name = "employee_id", nullable = true, referencedColumnName = "id")
 	private Employee empId;
 
 	@Temporal(TemporalType.TIMESTAMP)

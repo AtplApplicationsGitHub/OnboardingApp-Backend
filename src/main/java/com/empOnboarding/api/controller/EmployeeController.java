@@ -114,4 +114,11 @@ public class EmployeeController {
 		return employeeService.labSave(lab,empId);
 	}
 
+	@PostMapping("saveFeedBack/{star}/{feedback}/{taskId}")
+	public Boolean saveFeedBack(@PathVariable String star,@PathVariable String feedback,
+								@PathVariable String taskId,@CurrentUser UserPrincipal user) throws Exception {
+		return employeeService.saveEmployeeFeedback(star,feedback,taskId,user.getId());
+	}
+
+
 }

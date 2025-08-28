@@ -33,15 +33,18 @@ public class TaskService {
 
     private final GroupRepository groupRepository;
 
+    private final EmployeeFeedbackRepository employeeFeedbackRepository;
+
 
     public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository,UsersRepository usersRepository, QuestionRepository questionRepository,
-                       ConstantRepository constantRepository,GroupRepository groupRepository) {
+                       ConstantRepository constantRepository,GroupRepository groupRepository, EmployeeFeedbackRepository employeeFeedbackRepository) {
         this.taskRepository = taskRepository;
         this.usersRepository = usersRepository;
         this.questionRepository = questionRepository;
         this.constantRepository = constantRepository;
         this.groupRepository = groupRepository;
         this.taskQuestionRepository = taskQuestionRepository;
+        this.employeeFeedbackRepository = employeeFeedbackRepository;
     }
 
     @Transactional
@@ -121,7 +124,6 @@ public class TaskService {
         Page<TaskProjection> taskList;
         if(!CommonUtls.isCompletlyEmpty(search)){
             taskList = taskRepository.findEmployeeTaskSummariesWithSearch(search,pageable);
-//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
 //            taskList.stream().map(m-> m.setDoj(m.getDoj().format(formatter))).collect(Collectors.toList());
         }else{
             taskList = taskRepository.findEmployeeTaskSummaries(pageable);
@@ -147,6 +149,7 @@ public class TaskService {
     public TaskDTO populateTask(Task task) {
         TaskDTO tDto = new TaskDTO();
         Constant c = constantRepository.findByConstant("DateFormat");
+        Optional<EmployeeFeedback> ef = employeeFeedbackRepository.findByTaskId(task.getId());
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
         Employee e = task.getEmployeeId();
         tDto.setId(task.getId());
@@ -163,6 +166,11 @@ public class TaskService {
         tDto.setAssignedTo(task.getAssignedTo().getName());
         tDto.setFreezeTask(task.getFreezeTask());
         Set<TaskQuestions> tq = task.getTaskQuestions();
+        if(ef.isPresent()){
+            tDto.setEFId(ef.get().getId().toString());
+            tDto.setEFStar(ef.get().getStar().toString());
+            tDto.setFeedback(ef.get().getFeedback());
+        }
         long completed = tq.stream()
                 .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
                 .count();
@@ -206,6 +214,12 @@ public class TaskService {
         return dto;
     }
 
+    public Boolean saveFeedBack(){
+        EmployeeFeedback ef = new EmployeeFeedback();
+
+        employeeFeedbackRepository.save(ef);
+        return true;
+    }
 
 
     public List<TaskDTO> findById(String id) {

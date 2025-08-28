@@ -37,6 +37,9 @@ public class TaskDTO {
 	private List<TaskQuestionsDTO> questionList;
 	private String createdTime;
 	private String updatedTime;
+	private String eFId;
+	private String eFStar;
+	private String feedback;
 	private List<String> taskId;
 
 }
