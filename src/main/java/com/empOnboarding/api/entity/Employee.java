@@ -81,5 +81,4 @@ public class Employee implements java.io.Serializable {
 	@JoinColumn(name = "created_by", referencedColumnName = "id")
 	private Users createdBy;
 
-
 }

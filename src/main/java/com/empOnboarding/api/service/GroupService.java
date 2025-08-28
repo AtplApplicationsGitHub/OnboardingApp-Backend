@@ -30,17 +30,17 @@ import com.empOnboarding.api.utils.Constants;
 @Service
 public class GroupService {
 	
-	private GroupRepository groupRepository;
+	private final GroupRepository groupRepository;
 	
-	private QuestionRepository questionRepository;
+	private final QuestionRepository questionRepository;
 		
-	private AuditTrailService auditTrailService;
+	private final AuditTrailService auditTrailService;
 	
-	private ConstantRepository constantRepository;
+	private final ConstantRepository constantRepository;
 	
-	private MailerService mailerService;
+	private final MailerService mailerService;
 	
-	private UsersRepository usersRepository;
+	private final UsersRepository usersRepository;
 	
 	public GroupService(GroupRepository groupRepository, AuditTrailService auditTrailService,
 			ConstantRepository constantRepository, MailerService mailerService,UsersRepository usersRepository,

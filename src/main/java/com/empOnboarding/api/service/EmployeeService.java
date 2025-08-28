@@ -14,7 +14,6 @@ import com.empOnboarding.api.repository.*;
 import org.apache.poi.hssf.usermodel.*;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddressList;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 
 import org.json.JSONArray;
@@ -42,17 +41,21 @@ public class EmployeeService {
 
     private final ConstantRepository constantRepository;
 
+    private final EmployeeQuestionService employeeQuestionService;
+
     private final MailerService mailerService;
 
     private final TaskService taskService;
 
 
     public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
-                           ConstantRepository constantRepository, MailerService mailerService, TaskService taskService,
+                           ConstantRepository constantRepository,EmployeeQuestionService employeeQuestionService,
+                           MailerService mailerService, TaskService taskService,
                            TaskRepository taskRepository) {
         this.employeeRepositrory = employeeRepositrory;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
+        this.employeeQuestionService = employeeQuestionService;
         this.mailerService = mailerService;
         this.taskService = taskService;
         this.taskRepository = taskRepository;
@@ -66,6 +69,7 @@ public class EmployeeService {
         employeeRepositrory.save(emp);
         eDto.add(emp);
         taskService.createTask(eDto, user);
+        employeeQuestionService.createEmployeeQuestion(emp.getLevel(),emp.getId());
         dto.setSystemRemarks(emp.toString());
         dto.setModuleId(emp.getName());
         auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
@@ -433,6 +437,9 @@ public class EmployeeService {
             if (!toPersist.isEmpty()) {
                 employeeRepositrory.saveAll(toPersist);
                 taskService.createTask(toPersist, user);
+                toPersist.stream()
+                        .filter(e -> e.getId() != null && !CommonUtls.isCompletlyEmpty(e.getLevel()))
+                        .forEach(e -> employeeQuestionService.createEmployeeQuestion(e.getLevel().trim(), e.getId()));
             }
 
             result.put("successCount", success);
@@ -573,4 +580,5 @@ public class EmployeeService {
         employeeRepositrory.save(e);
         return true;
     }
+
 }

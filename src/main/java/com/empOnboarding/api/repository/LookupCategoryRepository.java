@@ -6,7 +6,7 @@ import java.util.UUID;
 import com.empOnboarding.api.entity.LookupCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface LookupCategoryRepository extends JpaRepository<LookupCategory, UUID> {
+public interface LookupCategoryRepository extends JpaRepository<LookupCategory, Long> {
 
 	boolean existsByName(String name);
 
