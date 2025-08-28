@@ -2,6 +2,7 @@ package com.empOnboarding.api.controller;
 
 import java.security.SecureRandom;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 import javax.servlet.http.HttpServletRequest;
@@ -169,16 +170,17 @@ public class AuthController {
 		Optional<LoginOTPLog> otpLog = Optional.empty();
 		String totp = generateOtp();
 		Optional<Employee> employee = employeeRepository.findById(id);
+        Optional<LoginOTPLog> lg = loginOTPLogRepository.findByEmpIdId(id);
 		LoginOTPLog login = new LoginOTPLog(null, totp, employee.orElse(null),
 				new Date());
-		loginOTPLogRepository.deleteAll(loginOTPLogRepository.findByEmpIdId(employee.get().getId()));
+        lg.ifPresent(loginOTPLog -> loginOTPLogRepository.deleteById(loginOTPLog.getId()));
 		loginOTPLogRepository.save(login);
 //		mailService.sendTOTPEmail(user.get().getEmail(), totp);
 	}
 
 
 	private Boolean verifyTotp(Long id, String otp) {
-		Optional<LoginOTPLog> enteredOtp = loginOTPLogRepository.findFirstByEmpIdId(id);
+		Optional<LoginOTPLog> enteredOtp = loginOTPLogRepository.findByEmpIdId(id);
 		if (otp.equals(enteredOtp.get().getOtp())) {
 			return true;
 		} else {

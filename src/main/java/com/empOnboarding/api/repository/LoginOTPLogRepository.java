@@ -7,10 +7,9 @@ import java.util.UUID;
 import com.empOnboarding.api.entity.LoginOTPLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface LoginOTPLogRepository extends JpaRepository<LoginOTPLog, UUID> {
+public interface LoginOTPLogRepository extends JpaRepository<LoginOTPLog, Long> {
 
-	Optional<LoginOTPLog> findFirstByEmpIdId(Long loginUserId);
+	Optional<LoginOTPLog> findByEmpIdId(Long loginUserId);
 
-	List<LoginOTPLog> findByEmpIdId(Long loginUserId);
-
+	void deleteByEmpIdId(Long id);
 }
