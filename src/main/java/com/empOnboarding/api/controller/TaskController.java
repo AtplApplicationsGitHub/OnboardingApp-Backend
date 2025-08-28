@@ -32,6 +32,12 @@ public class TaskController {
         return taskService.filteredTaskForAdmin(search,pageNo);
     }
 
+    @PostMapping("/filteredTaskForEmployee/{pageNo}")
+    public JSONObject filteredTaskForEmployee(@CurrentUser UserPrincipal user,@PathVariable String pageNo) {
+        return taskService.filteredTaskForEmployee(user.getId(),pageNo);
+    }
+
+
     @GetMapping("/findById/{id}")
     public List<TaskDTO> findDataById(@PathVariable String id) {
         return taskService.findById(id);

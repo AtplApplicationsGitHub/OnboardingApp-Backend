@@ -33,6 +33,7 @@ public class TaskService {
 
     private final GroupRepository groupRepository;
 
+
     public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository,UsersRepository usersRepository, QuestionRepository questionRepository,
                        ConstantRepository constantRepository,GroupRepository groupRepository) {
         this.taskRepository = taskRepository;
@@ -114,15 +115,30 @@ public class TaskService {
 
     @SuppressWarnings("unchecked")
     public JSONObject filteredTaskForAdmin(String search,String pageNo) {
+        Constant c = constantRepository.findByConstant("");
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         Page<TaskProjection> taskList;
         if(!CommonUtls.isCompletlyEmpty(search)){
             taskList = taskRepository.findEmployeeTaskSummariesWithSearch(search,pageable);
+//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
+//            taskList.stream().map(m-> m.setDoj(m.getDoj().format(formatter))).collect(Collectors.toList());
         }else{
             taskList = taskRepository.findEmployeeTaskSummaries(pageable);
         }
         json.put("commonListDto", taskList);
+        json.put("totalElements", taskList.getTotalElements());
+        return json;
+    }
+
+    @SuppressWarnings("unchecked")
+    public JSONObject filteredTaskForEmployee(Long eId,String pageNo) {
+        JSONObject json = new JSONObject();
+        Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
+        List<TaskDTO> dtoList;
+        Page<Task> taskList = taskRepository.findAllByEmployeeIdIdOrderByCreatedTimeDesc(eId,pageable);
+        dtoList = taskList.stream().map(this::populateTask).collect(Collectors.toList());
+        json.put("commonListDto", dtoList);
         json.put("totalElements", taskList.getTotalElements());
         return json;
     }
@@ -147,9 +163,6 @@ public class TaskService {
         tDto.setAssignedTo(task.getAssignedTo().getName());
         tDto.setFreezeTask(task.getFreezeTask());
         Set<TaskQuestions> tq = task.getTaskQuestions();
-        boolean allCompleted = tq.stream()
-                    .allMatch(q -> "completed".equalsIgnoreCase(q.getStatus()));
-        task.setFreezeButton(allCompleted);
         long completed = tq.stream()
                 .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
                 .count();
@@ -230,4 +243,5 @@ public class TaskService {
         taskQuestionRepository.save(tq);
         return true;
     }
+
 }

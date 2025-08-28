@@ -11,13 +11,9 @@ import com.empOnboarding.api.dto.PdfDTO;
 
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.*;
-import org.apache.poi.hssf.usermodel.HSSFCell;
-import org.apache.poi.hssf.usermodel.HSSFCellStyle;
-import org.apache.poi.hssf.usermodel.HSSFRow;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.*;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
 
 
 import org.json.JSONArray;
@@ -45,30 +41,35 @@ public class EmployeeService {
 
     private final ConstantRepository constantRepository;
 
+    private final EmployeeQuestionService employeeQuestionService;
+
     private final MailerService mailerService;
 
     private final TaskService taskService;
 
 
     public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
-                           ConstantRepository constantRepository, MailerService mailerService, TaskService taskService,
+                           ConstantRepository constantRepository,EmployeeQuestionService employeeQuestionService,
+                           MailerService mailerService, TaskService taskService,
                            TaskRepository taskRepository) {
         this.employeeRepositrory = employeeRepositrory;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
+        this.employeeQuestionService = employeeQuestionService;
         this.mailerService = mailerService;
         this.taskService = taskService;
         this.taskRepository = taskRepository;
     }
 
-    public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user){
+    public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user) {
         List<Employee> eDto = new ArrayList<>();
-        Employee emp = new Employee(null, empDto.getEmail(),empDto.getName(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
+        Employee emp = new Employee(null, empDto.getEmail(), empDto.getName(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
                 empDto.getTotalExperience(), empDto.getPastOrganization(), empDto.getLabAllocation(), empDto.getComplianceDay(),
                 LocalDate.parse(empDto.getDate()), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
         employeeRepositrory.save(emp);
         eDto.add(emp);
-        taskService.createTask(eDto,user);
+        taskService.createTask(eDto, user);
+        employeeQuestionService.createEmployeeQuestion(emp.getLevel(),emp.getId());
         dto.setSystemRemarks(emp.toString());
         dto.setModuleId(emp.getName());
         auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
@@ -135,21 +136,21 @@ public class EmployeeService {
         return eDTO;
     }
 
-	public Boolean updateEmployee(EmployeeDTO eDto, CommonDTO dto, UserPrincipal userp)  {
-		Optional<Employee> eOpt = employeeRepositrory.findById(Long.valueOf(eDto.getId()));
-		boolean result = false;
-		if (eOpt.isEmpty()) {
-			mailerService.sendEmailOnException(null);
-		} else {
+    public Boolean updateEmployee(EmployeeDTO eDto, CommonDTO dto, UserPrincipal userp) {
+        Optional<Employee> eOpt = employeeRepositrory.findById(Long.valueOf(eDto.getId()));
+        boolean result = false;
+        if (eOpt.isEmpty()) {
+            mailerService.sendEmailOnException(null);
+        } else {
             Employee e = getEmployee(eDto, userp, eOpt);
             employeeRepositrory.save(e);
-			dto.setSystemRemarks(e.toString());
-			dto.setModuleId(e.getName());
-			auditTrailService.saveAuditTrail(Constants.DATA_UPDATE.getValue(), dto);
-			result = true;
-		}
-		return result;
-	}
+            dto.setSystemRemarks(e.toString());
+            dto.setModuleId(e.getName());
+            auditTrailService.saveAuditTrail(Constants.DATA_UPDATE.getValue(), dto);
+            result = true;
+        }
+        return result;
+    }
 
     private static Employee getEmployee(EmployeeDTO eDto, UserPrincipal userp, Optional<Employee> eOpt) {
         Employee e = eOpt.get();
@@ -167,7 +168,7 @@ public class EmployeeService {
         return e;
     }
 
-    public void deleteEmployee(Long id, CommonDTO dto){
+    public void deleteEmployee(Long id, CommonDTO dto) {
         try {
             employeeRepositrory.deleteById(id);
             dto.setModuleId("NA");
@@ -196,26 +197,105 @@ public class EmployeeService {
     }
 
     public PdfDTO generateExcel(CommonDTO dto) throws Exception {
-        String SHEET_NAME = "Add Employee Sample Download";
-        String documentFileName = SHEET_NAME + ".xls";
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        List<String> headers = Arrays.asList("Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
-                "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day");
+        final String SHEET_NAME = "Add Employee Sample Download";
+        final String documentFileName = SHEET_NAME + ".xls";
 
-        HSSFWorkbook workbook = new HSSFWorkbook();
-        HSSFCellStyle cellStyle = createCellStyle(workbook);
+        // Header order drives column positions
+        final List<String> headers = Arrays.asList(
+                "Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
+                "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day"
+        );
 
-        HSSFSheet sheet = workbook.createSheet(SHEET_NAME);
-        createHeaderRow(sheet, headers, cellStyle);
-        workbook.write(byteArrayOutputStream);
-        byte[] byteArray = byteArrayOutputStream.toByteArray();
-        workbook.close();
-        PdfDTO excel = new PdfDTO(byteArray, documentFileName);
-        dto.setModuleId(Constants.ADD_EMPLOYEE);
-        dto.setModule(Constants.ADD_EMPLOYEE);
-        dto.setSystemRemarks("Add Employee Excel has been downloaded");
-        auditTrailService.saveAuditTrail(Constants.EXCEL_EXPORT.getValue(), dto);
-        return excel;
+        // Dropdown lists (can be extended later)
+        final String[] LEVEL_LIST = {"L1", "L2"};
+        final String[] LAB_LIST = {"Lab1", "Lab2"};
+
+        // Rows to which validations apply (row 0 = header)
+        final int FIRST_DATA_ROW = 1;   // second row visually
+        final int LAST_DATA_ROW = 1000;
+
+        try (HSSFWorkbook workbook = new HSSFWorkbook();
+             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+
+            HSSFSheet sheet = workbook.createSheet(SHEET_NAME);
+
+            // Styles
+            HSSFCellStyle headerStyle = createCellStyle(workbook); // you already have this
+            HSSFCellStyle dateStyle = createDateCellStyle(workbook);
+
+            // Header
+            createHeaderRow(sheet, headers, headerStyle);
+
+            // Column indexes (resolved from headers)
+            final int dojColIdx = headers.indexOf("DOJ");
+            final int levelColIdx = headers.indexOf("Level");
+            final int labColIdx = headers.indexOf("Lab Allocation");
+
+            // Pre-create date cells with date style for user convenience (optional but nice)
+            if (dojColIdx >= 0) {
+                for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
+                    Row row = sheet.getRow(r) != null ? sheet.getRow(r) : sheet.createRow(r);
+                    Cell c = row.createCell(dojColIdx);
+                    c.setCellStyle(dateStyle);
+                }
+            }
+
+            // Dropdowns
+            if (levelColIdx >= 0) {
+                addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, levelColIdx, LEVEL_LIST);
+            }
+            if (labColIdx >= 0) {
+                addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, labColIdx, LAB_LIST);
+            }
+
+            // Freeze header and autosize for readability
+            sheet.createFreezePane(0, 1);
+            for (int c = 0; c < headers.size(); c++) sheet.autoSizeColumn(c);
+
+            // Serialize workbook
+            workbook.write(byteArrayOutputStream);
+            byte[] byteArray = byteArrayOutputStream.toByteArray();
+
+            PdfDTO excel = new PdfDTO(byteArray, documentFileName);
+
+            // Audit trail (unchanged)
+            dto.setModuleId(Constants.ADD_EMPLOYEE);
+            dto.setModule(Constants.ADD_EMPLOYEE);
+            dto.setSystemRemarks("Add Employee Excel has been downloaded");
+            auditTrailService.saveAuditTrail(Constants.EXCEL_EXPORT.getValue(), dto);
+
+            return excel;
+        }
+    }
+
+    private HSSFCellStyle createDateCellStyle(HSSFWorkbook workbook) {
+        HSSFDataFormat df = workbook.createDataFormat();
+        HSSFCellStyle style = workbook.createCellStyle();
+        style.setDataFormat(df.getFormat("dd-mmm-yyyy")); // e.g., 26-Aug-2025
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        return style;
+    }
+
+    /**
+     * Add an explicit list dropdown to a single column across a row range (.xls / HSSF).
+     */
+    private void addExplicitListValidation(HSSFSheet sheet,
+                                           int firstRow, int lastRow,
+                                           int columnIndex,
+                                           String[] values) {
+        HSSFDataValidationHelper helper = new HSSFDataValidationHelper(sheet);
+        DataValidationConstraint constraint = helper.createExplicitListConstraint(values);
+        CellRangeAddressList region = new CellRangeAddressList(firstRow, lastRow, columnIndex, columnIndex);
+        HSSFDataValidation validation = (HSSFDataValidation) helper.createValidation(constraint, region);
+
+        // Better UX + stricter enforcement
+        validation.setSuppressDropDownArrow(false);
+        validation.setErrorStyle(DataValidation.ErrorStyle.STOP);
+        validation.createErrorBox("Invalid choice", "Select a value from the dropdown list.");
+        validation.createPromptBox("Select from list", "Choose one of the predefined options.");
+
+        sheet.addValidationData(validation);
     }
 
     private void createHeaderRow(HSSFSheet sheet, List<String> headers, HSSFCellStyle cellStyle) {
@@ -238,16 +318,16 @@ public class EmployeeService {
         return cellStyle;
     }
 
-    private static final String COL_NAME                = "name";
-    private static final String COL_EMAIL               = "email";
-    private static final String COL_DEPARTMENT          = "department";
-    private static final String COL_ROLE                = "role";
-    private static final String COL_LEVEL               = "level";
-    private static final String COL_TOTAL_EXPERIENCE    = "total_experience";
-    private static final String COL_PAST_ORGANIZATION   = "past_organization";
-    private static final String COL_LAB_ALLOCATION      = "lab_allocation";
-    private static final String COL_COMPLIANCE_DAY      = "compliance_day";
-    private static final String COL_DATE_OF_JOINING     = "date_of_joining";
+    private static final String COL_NAME = "name";
+    private static final String COL_EMAIL = "email";
+    private static final String COL_DEPARTMENT = "department";
+    private static final String COL_ROLE = "role";
+    private static final String COL_LEVEL = "level";
+    private static final String COL_TOTAL_EXPERIENCE = "total_experience";
+    private static final String COL_PAST_ORGANIZATION = "past_organization";
+    private static final String COL_LAB_ALLOCATION = "lab_allocation";
+    private static final String COL_COMPLIANCE_DAY = "compliance_day";
+    private static final String COL_DATE_OF_JOINING = "date_of_joining";
 
     private static final Map<String, String> HEADER_ALIASES = Map.ofEntries(
             Map.entry("candidate name", COL_NAME),
@@ -312,16 +392,16 @@ public class EmployeeService {
                 if (row == null) continue;
 
                 try {
-                    String name              = getCellString(row, colIndex.get(COL_NAME));
-                    String email             = getCellString(row, colIndex.get(COL_EMAIL));
-                    String department        = getCellString(row, colIndex.get(COL_DEPARTMENT));
-                    String role              = getCellString(row, colIndex.get(COL_ROLE));
-                    String level             = getCellString(row, colIndex.get(COL_LEVEL));
-                    String totalExperience   = getCellString(row, colIndex.get(COL_TOTAL_EXPERIENCE));
-                    String pastOrganization  = getCellString(row, colIndex.get(COL_PAST_ORGANIZATION));
-                    String labAllocation     = getCellString(row, colIndex.get(COL_LAB_ALLOCATION));
-                    Integer complianceDay    = getCellInteger(row, colIndex.get(COL_COMPLIANCE_DAY));
-                    LocalDate dateOfJoining  = getCellLocalDate(row, colIndex.get(COL_DATE_OF_JOINING));
+                    String name = getCellString(row, colIndex.get(COL_NAME));
+                    String email = getCellString(row, colIndex.get(COL_EMAIL));
+                    String department = getCellString(row, colIndex.get(COL_DEPARTMENT));
+                    String role = getCellString(row, colIndex.get(COL_ROLE));
+                    String level = getCellString(row, colIndex.get(COL_LEVEL));
+                    String totalExperience = getCellString(row, colIndex.get(COL_TOTAL_EXPERIENCE));
+                    String pastOrganization = getCellString(row, colIndex.get(COL_PAST_ORGANIZATION));
+                    String labAllocation = getCellString(row, colIndex.get(COL_LAB_ALLOCATION));
+                    Integer complianceDay = getCellInteger(row, colIndex.get(COL_COMPLIANCE_DAY));
+                    LocalDate dateOfJoining = getCellLocalDate(row, colIndex.get(COL_DATE_OF_JOINING));
 
                     // Basic validations
                     if (name == null || name.isBlank()) {
@@ -356,7 +436,10 @@ public class EmployeeService {
             }
             if (!toPersist.isEmpty()) {
                 employeeRepositrory.saveAll(toPersist);
-                taskService.createTask(toPersist,user);
+                taskService.createTask(toPersist, user);
+                toPersist.stream()
+                        .filter(e -> e.getId() != null && !CommonUtls.isCompletlyEmpty(e.getLevel()))
+                        .forEach(e -> employeeQuestionService.createEmployeeQuestion(e.getLevel().trim(), e.getId()));
             }
 
             result.put("successCount", success);
@@ -479,7 +562,8 @@ public class EmployeeService {
         for (DateTimeFormatter fmt : DATE_PATTERNS) {
             try {
                 return LocalDate.parse(s.trim(), fmt);
-            } catch (DateTimeParseException ignored) {}
+            } catch (DateTimeParseException ignored) {
+            }
         }
         // Last resort: ISO
         try {
@@ -489,11 +573,12 @@ public class EmployeeService {
         }
     }
 
-    public Boolean labSave(String lab,Long empId){
+    public Boolean labSave(String lab, Long empId) {
         Employee e = employeeRepositrory.getReferenceById(empId);
         e.setLabAllocation(lab);
         e.setUpdatedTime(new Date());
         employeeRepositrory.save(e);
         return true;
     }
+
 }

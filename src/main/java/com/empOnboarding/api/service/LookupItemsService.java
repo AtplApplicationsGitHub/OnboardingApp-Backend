@@ -49,7 +49,7 @@ public class LookupItemsService {
 		if (!CommonUtls.isCompletlyEmpty(lookUpItemDTO.getId()))
 			isLookupItems = lookupItemsRepo.findById(Long.valueOf(lookUpItemDTO.getId()));
 		Optional<LookupCategory> categorylist = lookupCategoryRepo
-				.findById(UUID.fromString(lookUpItemDTO.getCategoryId()));
+				.findById(Long.valueOf(lookUpItemDTO.getCategoryId()));
 		LookupItems lookupItems = new LookupItems(isLookupItems.map(LookupItems::getId).orElse(null),
 				categorylist.get(), lookUpItemDTO.getKey().trim(), lookUpItemDTO.getValue().trim(), lookUpItemDTO.getImage(), lookUpItemDTO.getDisplayOrder(),
 				new Users(lookUpItemDTO.getLoginUserId()), new Date());
@@ -106,7 +106,7 @@ public class LookupItemsService {
 		boolean result = false;
 		Optional<LookupItems> lookupItemlist = lookupItemsRepo.findById(Long.valueOf(lookUpItemDTO.getId()));
 		Optional<LookupCategory> categorylist = lookupCategoryRepo
-				.findById(UUID.fromString(lookUpItemDTO.getCategoryId()));
+				.findById(Long.valueOf(lookUpItemDTO.getCategoryId()));
 		if (lookupItemlist.isPresent()) {
 			LookupItems lookupItem = new LookupItems();
 			lookupItem.setId(lookupItemlist.get().getId());
