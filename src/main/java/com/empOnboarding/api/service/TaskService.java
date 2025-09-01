@@ -252,4 +252,8 @@ public class TaskService {
         return true;
     }
 
+    public long taskCountForAdmin(){
+        return taskRepository.count();
+    }
+
 }
