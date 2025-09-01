@@ -7,6 +7,7 @@ import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.empOnboarding.api.dto.EmployeeFeedbackDTO;
 import com.empOnboarding.api.dto.PdfDTO;
 
 import com.empOnboarding.api.entity.*;
@@ -586,9 +587,28 @@ public class EmployeeService {
     public Boolean saveEmployeeFeedback(String star, String feedback, String taskId,Long id){
         Task t = taskRepository.getReferenceById(taskId);
         Employee e = employeeRepositrory.getReferenceById(id);
-        EmployeeFeedback ef = new EmployeeFeedback(id,star,feedback,t,e,new Date());
+        EmployeeFeedback ef = new EmployeeFeedback(id,star,feedback,"Y",t,e,new Date());
         employeeFeedbackRepository.save(ef);
         return true;
+    }
+
+    public EmployeeFeedbackDTO findEmployeeFeedBack(String taskId,Long id){
+        EmployeeFeedbackDTO dto = new EmployeeFeedbackDTO();
+        Optional<EmployeeFeedback> employeeFeedback = employeeFeedbackRepository.findByTaskIdIdAndEmployeeIdId(taskId,id);
+        if(employeeFeedback.isPresent()){
+            dto = populateFeedbackDto(employeeFeedback.get());
+        }
+        return dto;
+    }
+
+    public EmployeeFeedbackDTO populateFeedbackDto(EmployeeFeedback ef){
+        EmployeeFeedbackDTO eDto = new EmployeeFeedbackDTO();
+        eDto.setId(ef.getId().toString());
+        eDto.setStar(ef.getStar());
+        eDto.setFeedback(ef.getFeedback());
+        eDto.setTaskId(ef.getTaskId().getId());
+        eDto.setCompleted(CommonUtls.trueIfYes(ef.getCompleted()));
+        return eDto;
     }
 
 }
