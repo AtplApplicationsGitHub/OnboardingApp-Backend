@@ -611,4 +611,11 @@ public class EmployeeService {
         return eDto;
     }
 
+    public Boolean emailExists(String email) {
+        boolean result;
+        Optional<Employee> userDetails = employeeRepositrory.findByEmail(email);
+        result = userDetails.isPresent();
+        return result;
+    }
+
 }

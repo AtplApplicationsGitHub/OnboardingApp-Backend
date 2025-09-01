@@ -58,6 +58,9 @@ public class TaskController {
         return taskService.taskQuestionAnswer(qId,response);
     }
 
-
+    @GetMapping("/taskCountForAdmin")
+    public long taskCountForAdmin() {
+        return taskService.taskCountForAdmin();
+    }
 
 }
