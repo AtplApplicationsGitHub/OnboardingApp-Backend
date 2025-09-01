@@ -77,7 +77,7 @@ public class AuthController {
             if (Constants.Y.equalsIgnoreCase(user.get().getActiveFlag())) {
                 String jwt = "";
                 if (passwordEncoder.matches(loginRequest.getPassword(), user.get().getPassword())) {
-                    jwt = tokenProvider.generateToken(user.get().getId());
+                    jwt = tokenProvider.generateToken(user.get().getId(),"Admin");
                     response.setAccessToken(jwt);
                     response.setUserId(user.get().getId().toString());
                     response.setSuccess(Constants.SUCCESS.isStatus());
@@ -104,7 +104,7 @@ public class AuthController {
         if (employee.isPresent()) {
             String jwt = "";
             if (verifyTotp(employee.get().getId(), loginRequest.getPassword())) {
-                jwt = tokenProvider.generateToken(employee.get().getId());
+                jwt = tokenProvider.generateToken(employee.get().getId(),"Employee");
                 response.setAccessToken(jwt);
                 response.setSuccess(Constants.SUCCESS.isStatus());
                 response.setUserId(employee.get().getId().toString());

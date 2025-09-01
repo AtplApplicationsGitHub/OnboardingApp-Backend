@@ -16,6 +16,6 @@ import java.util.Optional;
 public interface EmployeeFeedbackRepository extends JpaRepository<EmployeeFeedback, Long> {
 
 
-    Optional<EmployeeFeedback> findByTaskId(String taskId);
+    Optional<EmployeeFeedback> findByTaskIdId(String taskId);
 
 }

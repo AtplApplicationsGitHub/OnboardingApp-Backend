@@ -54,9 +54,6 @@ public class LookupItems  implements java.io.Serializable, Diffable<LookupItems>
 	@Column(name = "item_value", length = 200,nullable = true)
 	private String value;
 	
-	@Column(name = "image", length = 200,nullable = true)
-	private String image;
-	
 	@Column(name = "display_order",nullable = true)
 	private Short displayOrder;
 	

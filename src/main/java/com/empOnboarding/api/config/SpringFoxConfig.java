@@ -16,12 +16,12 @@ public class SpringFoxConfig {
 	@Bean
 	public Docket productApi() {
 		return new Docket(DocumentationType.SWAGGER_2).select()
-				.apis(RequestHandlerSelectors.basePackage("com.mitoPower.api.controller")).paths(PathSelectors.any())
+				.apis(RequestHandlerSelectors.basePackage("com.OnboardingApp.api.controller")).paths(PathSelectors.any())
 				.build().apiInfo(metaData());
 	}
 
 	private ApiInfo metaData() {
-		return new ApiInfoBuilder().title("Mito Power APIs").description("\"Mito Power APIs\"")
+		return new ApiInfoBuilder().title("Onboarding APIs").description("\"Onboarding APIs\"")
 				.version("1.0.0").build();
 	}
 }

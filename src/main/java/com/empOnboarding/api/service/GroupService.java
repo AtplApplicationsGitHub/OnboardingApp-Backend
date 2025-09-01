@@ -127,7 +127,7 @@ public class GroupService {
 		JSONObject json = new JSONObject();
 		Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
 		List<GroupsDTO> list;
-		Page<Groups> gList = groupRepository.findAllByOrderByCreatedTimeAsc(pageable);
+		Page<Groups> gList = groupRepository.findAllByOrderByCreatedTimeDesc(pageable);
 		list = gList.stream().map(this::populateGroup).collect(Collectors.toList());
 		json.put("commonListDto", list);
 		json.put("totalElements", gList.getTotalElements());

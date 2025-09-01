@@ -1,5 +1,7 @@
 package com.empOnboarding.api.security;
 
+import com.empOnboarding.api.entity.Employee;
+import com.empOnboarding.api.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -14,7 +16,10 @@ import com.empOnboarding.api.repository.UsersRepository;
 public class AppCustomUserDetailsService implements UserDetailsService {
 
 	@Autowired
-	UsersRepository usersRepository; 
+	UsersRepository usersRepository;
+
+	@Autowired
+	EmployeeRepository employeeRepository;
 
 	@Override
 	@Transactional
@@ -32,10 +37,24 @@ public class AppCustomUserDetailsService implements UserDetailsService {
 	}
 
 	@Transactional
+	public UserDetails loadEmployeeById(Long id) {
+		Employee emp = employeeRepository.findById(id)
+				.orElseThrow(() -> new UsernameNotFoundException("User not found with id : " + id));
+		return UserPrincipal.createEmp(emp);
+	}
+
+	@Transactional
 	public Users loadUserByUserId(Long id) {
         return usersRepository.findById(id).orElseThrow(
             () -> new UsernameNotFoundException("User not found with id : " + id)
         );
     }
+
+	@Transactional
+	public Employee loadEmployeeByEmpId(Long id) {
+		return employeeRepository.findById(id).orElseThrow(
+				() -> new UsernameNotFoundException("User not found with id : " + id)
+		);
+	}
 
 }

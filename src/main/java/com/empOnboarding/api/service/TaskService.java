@@ -149,7 +149,7 @@ public class TaskService {
     public TaskDTO populateTask(Task task) {
         TaskDTO tDto = new TaskDTO();
         Constant c = constantRepository.findByConstant("DateFormat");
-        Optional<EmployeeFeedback> ef = employeeFeedbackRepository.findByTaskId(task.getId());
+        Optional<EmployeeFeedback> ef = employeeFeedbackRepository.findByTaskIdId(task.getId());
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
         Employee e = task.getEmployeeId();
         tDto.setId(task.getId());
@@ -183,6 +183,7 @@ public class TaskService {
         tDto.setTotalQuestions(tq.size());
         List<TaskQuestionsDTO> questionDto = tq.stream()
                 .map(q -> populateTaskQuestion(q, e.getDate()))
+                .sorted(Comparator.comparing(TaskQuestionsDTO::getCreatedTime)) // ascending
                 .collect(Collectors.toList());
         tDto.setQuestionList(questionDto);
         tDto.setCompletedQuestions(completed);
@@ -210,15 +211,8 @@ public class TaskService {
         dto.setResponseType(taskQuestions.getQuestionId().getResponse());
         dto.setResponse(taskQuestions.getResponse());
         dto.setStatus(taskQuestions.getStatus());
-
+        dto.setCreatedTime(taskQuestions.getQuestionId().getCreatedTime().toString());
         return dto;
-    }
-
-    public Boolean saveFeedBack(){
-        EmployeeFeedback ef = new EmployeeFeedback();
-
-        employeeFeedbackRepository.save(ef);
-        return true;
     }
 
 

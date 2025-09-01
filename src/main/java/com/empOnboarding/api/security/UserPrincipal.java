@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+import com.empOnboarding.api.entity.Employee;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -93,5 +94,11 @@ public class UserPrincipal implements UserDetails {
 		List<GrantedAuthority> authorities = new ArrayList<>();
 		authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole()));
 		return new UserPrincipal(user.getId(),user.getName(), user.getEmail(),user.getRole(), authorities);
+	}
+
+	public static UserDetails createEmp(Employee emp) {
+		List<GrantedAuthority> authorities = new ArrayList<>();
+		authorities.add(new SimpleGrantedAuthority("ROLE_" + emp.getRole()));
+		return new UserPrincipal(emp.getId(),emp.getName(), emp.getEmail(),emp.getRole(), authorities);
 	}
 }

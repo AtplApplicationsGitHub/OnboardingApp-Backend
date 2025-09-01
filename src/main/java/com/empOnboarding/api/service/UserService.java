@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
+import com.empOnboarding.api.entity.Employee;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,6 +81,34 @@ public class UserService {
 		return result;
 	}
 
+	public boolean isActiveSessionPresentEmp(Employee userDetails, String jwt) throws Exception {
+		boolean result = false;
+		try {
+			List<SpringSessionAttributes> authAttrs = sessionAttrDAO.findByIdAttributeName("authToken");
+			if (userDetails != null && userDetails.getName() != null) {
+				for (SpringSessionAttributes attr : authAttrs) {
+					ObjectInput in = new ObjectInputStream(new ByteArrayInputStream(attr.getAttributeBytes()));
+					String dbToken = (String) in.readObject();
+					if (dbToken != null && (dbToken.equalsIgnoreCase(jwt))) {
+						Date expireDateTime = new Date(attr.getSpringSession().getExpiryTime());
+						Date currentdateTime = new Date();
+						if (expireDateTime.after(currentdateTime)) {
+							return true;
+						} else {
+							sessionDAO.delete(new SpringSession(attr.getSpringSession().getPrimaryId()));
+						}
+						break;
+					}
+				}
+			}
+		} catch (Exception e) {
+			throw e;
+		}
+		return result;
+	}
+
+
+
 	@Transactional
 	public String getPrimaryId(String sessionId) throws Exception {
 		String primaryKey = null;
@@ -117,6 +146,31 @@ public class UserService {
 		}
 		return sessionId;
 	}
+
+	@Transactional
+	public String getSessionIdForEmp(Employee userDetails) throws Exception {
+		String sessionId = null;
+		try {
+			List<SpringSessionAttributes> attributes = sessionAttrDAO.findByIdAttributeName("id");
+			if (userDetails != null && userDetails.getName() != null) {
+				for (SpringSessionAttributes attr : attributes) {
+					ObjectInput in = new ObjectInputStream(new ByteArrayInputStream(attr.getAttributeBytes()));
+					String username = (String) in.readObject();
+					if (username != null && username.equalsIgnoreCase(userDetails.getId().toString())) {
+						Date expireDateTime = new Date(attr.getSpringSession().getExpiryTime());
+						Date currentdateTime = new Date();
+						if (expireDateTime.after(currentdateTime))
+							sessionId = attr.getSpringSession().getSessionId();
+					}
+				}
+			}
+		} catch (Exception e) {
+			throw e;
+		}
+		return sessionId;
+	}
+
+
 
 	@Transactional
 	public long getsessionCreatedTime(String sessionId) throws Exception {
