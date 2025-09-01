@@ -18,4 +18,6 @@ public interface EmployeeFeedbackRepository extends JpaRepository<EmployeeFeedba
 
     Optional<EmployeeFeedback> findByTaskIdId(String taskId);
 
+    Optional<EmployeeFeedback> findByTaskIdIdAndEmployeeIdId(String taskId, Long id);
+
 }

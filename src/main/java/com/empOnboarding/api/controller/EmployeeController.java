@@ -3,6 +3,7 @@ package com.empOnboarding.api.controller;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.empOnboarding.api.dto.EmployeeFeedbackDTO;
 import com.empOnboarding.api.dto.PdfDTO;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
@@ -118,6 +119,11 @@ public class EmployeeController {
 	public Boolean saveFeedBack(@PathVariable String star,@PathVariable String feedback,
 								@PathVariable String taskId,@CurrentUser UserPrincipal user) throws Exception {
 		return employeeService.saveEmployeeFeedback(star,feedback,taskId,user.getId());
+	}
+
+	@GetMapping("getEmployeeFeedBack/{taskId}")
+	public EmployeeFeedbackDTO getEmployeeFeedBack(@PathVariable String taskId,@CurrentUser UserPrincipal user){
+		return employeeService.findEmployeeFeedBack(taskId, user.getId());
 	}
 
 
