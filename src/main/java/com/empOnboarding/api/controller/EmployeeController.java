@@ -126,5 +126,9 @@ public class EmployeeController {
 		return employeeService.findEmployeeFeedBack(taskId, user.getId());
 	}
 
+	@GetMapping("/emailExists/{email}")
+	public Boolean emailExists(@PathVariable String email) {
+		return employeeService.emailExists(email);
+	}
 
 }

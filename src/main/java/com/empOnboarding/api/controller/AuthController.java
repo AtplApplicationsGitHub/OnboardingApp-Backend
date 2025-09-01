@@ -11,6 +11,7 @@ import com.empOnboarding.api.entity.Employee;
 import com.empOnboarding.api.entity.LoginOTPLog;
 import com.empOnboarding.api.repository.EmployeeRepository;
 import com.empOnboarding.api.repository.LoginOTPLogRepository;
+import com.empOnboarding.api.service.MailerService;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,14 +45,18 @@ public class AuthController {
 
     private final LoginOTPLogRepository loginOTPLogRepository;
 
+    private final MailerService mailerService;
+
 
     public AuthController(UsersRepository usersRepository, TokenProvider tokenProvider, PasswordEncoder passwordEncoder,
-                          EmployeeRepository employeeRepository, LoginOTPLogRepository loginOTPLogRepository) {
+                          EmployeeRepository employeeRepository, LoginOTPLogRepository loginOTPLogRepository,
+                          MailerService mailerService) {
         this.usersRepository = usersRepository;
         this.tokenProvider = tokenProvider;
         this.passwordEncoder = passwordEncoder;
         this.employeeRepository = employeeRepository;
         this.loginOTPLogRepository = loginOTPLogRepository;
+        this.mailerService = mailerService;
     }
 
     /**
@@ -175,7 +180,7 @@ public class AuthController {
 				new Date());
         lg.ifPresent(loginOTPLog -> loginOTPLogRepository.deleteById(loginOTPLog.getId()));
 		loginOTPLogRepository.save(login);
-//		mailService.sendTOTPEmail(user.get().getEmail(), totp);
+        mailerService.sendTOTPEmail(employee.get().getEmail(), totp);
 	}
 
 

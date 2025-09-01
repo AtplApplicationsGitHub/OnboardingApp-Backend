@@ -137,4 +137,12 @@ public class MailerService {
 
     }
 
+    public void sendTOTPEmail(String to, String totp) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Your One-Time Password (OTP)");
+        message.setText("Your OTP is: " + totp);
+        javaMailSender.send(message);
+    }
+
 }
