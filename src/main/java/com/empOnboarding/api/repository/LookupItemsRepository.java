@@ -17,4 +17,5 @@ public interface LookupItemsRepository extends JpaRepository<LookupItems, Long> 
 
 	Page<LookupItems> findByLookupCategoryIdOrderByDisplayOrderAsc(Long fromString, Pageable pageable);
 
+	List<LookupItems> findByLookupCategoryNameOrderByDisplayOrderAsc(String name);
 }

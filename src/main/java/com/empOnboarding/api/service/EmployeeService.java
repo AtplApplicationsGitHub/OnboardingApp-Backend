@@ -49,11 +49,13 @@ public class EmployeeService {
 
     private final EmployeeFeedbackRepository employeeFeedbackRepository;
 
+    private final LookupItemsRepository lookupItemsRepository;
+
 
     public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
                            ConstantRepository constantRepository,EmployeeQuestionService employeeQuestionService,
                            MailerService mailerService, TaskService taskService, TaskRepository taskRepository,
-                           EmployeeFeedbackRepository employeeFeedbackRepository) {
+                           EmployeeFeedbackRepository employeeFeedbackRepository, LookupItemsRepository lookupItemsRepository) {
         this.employeeRepositrory = employeeRepositrory;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
@@ -62,6 +64,7 @@ public class EmployeeService {
         this.taskService = taskService;
         this.taskRepository = taskRepository;
         this.employeeFeedbackRepository = employeeFeedbackRepository;
+        this.lookupItemsRepository = lookupItemsRepository;
     }
 
     public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user) {
@@ -208,13 +211,13 @@ public class EmployeeService {
                 "Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
                 "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day"
         );
+        List<String> lab = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Lab").stream().map(LookupItems::getValue).toList();
+        List<String> level = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Level").stream().map(LookupItems::getValue).toList();
 
-        // Dropdown lists (can be extended later)
-        final String[] LEVEL_LIST = {"L1", "L2"};
-        final String[] LAB_LIST = {"Lab1", "Lab2"};
+        final String[] LEVEL_ARR = (level.isEmpty() ? new String[]{} : level.toArray(new String[0]));
+        final String[] LAB_ARR   = (lab.isEmpty()   ? new String[]{} : lab.toArray(new String[0]));
 
-        // Rows to which validations apply (row 0 = header)
-        final int FIRST_DATA_ROW = 1;   // second row visually
+        final int FIRST_DATA_ROW = 1;
         final int LAST_DATA_ROW = 1000;
 
         try (HSSFWorkbook workbook = new HSSFWorkbook();
@@ -222,19 +225,15 @@ public class EmployeeService {
 
             HSSFSheet sheet = workbook.createSheet(SHEET_NAME);
 
-            // Styles
-            HSSFCellStyle headerStyle = createCellStyle(workbook); // you already have this
+            HSSFCellStyle headerStyle = createCellStyle(workbook);
             HSSFCellStyle dateStyle = createDateCellStyle(workbook);
 
-            // Header
             createHeaderRow(sheet, headers, headerStyle);
 
-            // Column indexes (resolved from headers)
             final int dojColIdx = headers.indexOf("DOJ");
             final int levelColIdx = headers.indexOf("Level");
             final int labColIdx = headers.indexOf("Lab Allocation");
 
-            // Pre-create date cells with date style for user convenience (optional but nice)
             if (dojColIdx >= 0) {
                 for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
                     Row row = sheet.getRow(r) != null ? sheet.getRow(r) : sheet.createRow(r);
@@ -245,10 +244,10 @@ public class EmployeeService {
 
             // Dropdowns
             if (levelColIdx >= 0) {
-                addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, levelColIdx, LEVEL_LIST);
+                addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, levelColIdx, LEVEL_ARR);
             }
             if (labColIdx >= 0) {
-                addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, labColIdx, LAB_LIST);
+                addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, labColIdx, LAB_ARR);
             }
 
             // Freeze header and autosize for readability

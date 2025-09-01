@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.transaction.Transactional;
 
+import com.empOnboarding.api.entity.Employee;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,15 +58,28 @@ public class AppAuthenticationFilter extends OncePerRequestFilter {
             String jwt = getJwtFromRequest(request);
 			if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
 				Long userId = tokenProvider.getUserIdFromJWT(jwt);
-				Users userData = customUserDetailsService.loadUserByUserId(userId);
-				if(userService.isActiveSessionPresent(userData,jwt)) {
-				SpringSession springSession = populateSpringSession(userData);
-	        	sessionDAO.saveAndFlush(springSession);
-				UserDetails userDetails = customUserDetailsService.loadUserById(userId);
-    			UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-    			authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-    			SecurityContextHolder.getContext().setAuthentication(authentication);
-			}
+				String role = tokenProvider.getRoleFromJWT(jwt);
+				if(role.equalsIgnoreCase("Admin")) {
+					Users userData = customUserDetailsService.loadUserByUserId(userId);
+					if(userService.isActiveSessionPresent(userData,jwt)) {
+						SpringSession springSession = populateSpringSession(userData);
+						sessionDAO.saveAndFlush(springSession);
+						UserDetails userDetails = customUserDetailsService.loadUserById(userId);
+						UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+						authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+						SecurityContextHolder.getContext().setAuthentication(authentication);
+					}
+				}else{
+					Employee userData = customUserDetailsService.loadEmployeeByEmpId(userId);
+					if(userService.isActiveSessionPresentEmp(userData,jwt)) {
+						SpringSession springSession = populateSpringSessionEmp(userData);
+						sessionDAO.saveAndFlush(springSession);
+						UserDetails userDetails = customUserDetailsService.loadEmployeeById(userId);
+						UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+						authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+						SecurityContextHolder.getContext().setAuthentication(authentication);
+					}
+				}
 			}
         } catch (Exception ex) {
             logger.error("Could not set user authentication in security context", ex);
@@ -86,6 +100,27 @@ public class AppAuthenticationFilter extends OncePerRequestFilter {
 		SpringSession springSession = new SpringSession();
 		try {
 			String sessionId = userService.getSessionId(userDetails);
+			String primaryId = userService.getPrimaryId(sessionId);
+			long createdTime = userService.getsessionCreatedTime(sessionId);
+			springSession.setCreationTime(createdTime);
+			springSession.setExpiryTime(new Date(System.currentTimeMillis()+20*60*1000).getTime());
+			springSession.setLastAccessTime(new Date().getTime());
+			springSession.setMaxInactiveInterval(Integer.valueOf(maxActive));
+			springSession.setPrimaryId(primaryId);
+			springSession.setSessionId(sessionId);
+			List<SpringSessionAttributes> attributes = sessionAttrDAO.findBySpringSession(springSession);
+			springSession.setSpringSessionAttributeses(attributes.stream().collect(Collectors.toSet()));
+		} catch (Exception e) {
+			throw e;
+		}
+		return springSession;
+	}
+
+	@Transactional
+	private SpringSession populateSpringSessionEmp(Employee userDetails) throws Exception {
+		SpringSession springSession = new SpringSession();
+		try {
+			String sessionId = userService.getSessionIdForEmp(userDetails);
 			String primaryId = userService.getPrimaryId(sessionId);
 			long createdTime = userService.getsessionCreatedTime(sessionId);
 			springSession.setCreationTime(createdTime);

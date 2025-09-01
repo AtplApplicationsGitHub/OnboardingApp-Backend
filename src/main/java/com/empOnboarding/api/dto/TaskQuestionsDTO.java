@@ -24,5 +24,6 @@ public class TaskQuestionsDTO {
     private String status;
     private String complianceDay;
     private Boolean overDueFlag;
+    private String createdTime;
 
 }

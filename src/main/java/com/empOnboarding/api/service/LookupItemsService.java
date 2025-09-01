@@ -51,7 +51,7 @@ public class LookupItemsService {
 		Optional<LookupCategory> categorylist = lookupCategoryRepo
 				.findById(Long.valueOf(lookUpItemDTO.getCategoryId()));
 		LookupItems lookupItems = new LookupItems(isLookupItems.map(LookupItems::getId).orElse(null),
-				categorylist.get(), lookUpItemDTO.getKey().trim(), lookUpItemDTO.getValue().trim(), lookUpItemDTO.getImage(), lookUpItemDTO.getDisplayOrder(),
+				categorylist.get(), lookUpItemDTO.getKey().trim(), lookUpItemDTO.getValue().trim(), lookUpItemDTO.getDisplayOrder(),
 				new Users(lookUpItemDTO.getLoginUserId()), new Date());
 		oldValue = isLookupItems.map(LookupItems::getKey).orElse(null);
 		if (CommonUtls.isEmpty(lookUpItemDTO.getId())) {
