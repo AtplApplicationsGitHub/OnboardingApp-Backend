@@ -131,4 +131,9 @@ public class EmployeeController {
 		return employeeService.emailExists(email);
 	}
 
+	@GetMapping("getConstant/{constant}")
+	public String getConstString(@PathVariable String constant){
+		return employeeService.getConstant(constant);
+	}
+
 }

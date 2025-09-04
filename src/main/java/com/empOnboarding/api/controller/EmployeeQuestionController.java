@@ -6,6 +6,7 @@ import com.empOnboarding.api.security.CurrentUser;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.service.EmployeeQuestionService;
 import com.empOnboarding.api.utils.Constants;
+import org.json.simple.JSONObject;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -33,6 +34,11 @@ public class EmployeeQuestionController {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    @PostMapping("/filteredEmployeesQues/{userId}/{pageNo}")
+    public JSONObject filteredEmployeesQues(@PathVariable Long userId,@PathVariable String pageNo) throws Exception {
+        return employeeQuestionService.filteredEmployeesQuestions(userId,pageNo);
     }
 
 

@@ -26,7 +26,7 @@ public class EQuestions implements java.io.Serializable {
     @Column(name = "id", unique = true, nullable = false)
     private Long id;
 
-    @Column(name = "question")
+    @Column(name = "questions")
     private String questions;
 
     @Column(name = "response_type")

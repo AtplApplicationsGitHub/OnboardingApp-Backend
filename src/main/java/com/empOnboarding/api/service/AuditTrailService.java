@@ -74,7 +74,7 @@ public class AuditTrailService {
 		return auditList.stream()
 				.map(m -> new AuditTrailDTO(m.getUsers().getId(),
 						m.getUsers().getName(), m.getEvent(), m.getIpAddress(),
-						CommonUtls.convertTime(m.getCreatedTime()), m.getBrowser(), m.getSystemRemarks(), m.getModule(),
+						CommonUtls.convertTime(m.getCreatedTime()), m.getSystemRemarks(), m.getModule(),
 						m.getModuleId(), m.getUserRemarks()))
 				.collect(Collectors.toList());
 	}
@@ -83,7 +83,7 @@ public class AuditTrailService {
 		return auditList.stream()
 				.map(m -> new AuditTrailDTO(m.getUsers().getId(),
 						m.getUsers().getName(), m.getEvent(), m.getIpAddress(),
-						CommonUtls.convertTime(m.getCreatedTime()), m.getBrowser(), m.getSystemRemarks(), m.getModule(),
+						CommonUtls.convertTime(m.getCreatedTime()), m.getSystemRemarks(), m.getModule(),
 						m.getModuleId(), m.getUserRemarks()))
 				.collect(Collectors.toList());
 	}
@@ -95,10 +95,7 @@ public class AuditTrailService {
 					if (CommonUtls.isVaildNumber(commonDTO.getLoginUserId())) {
 						AuditTrail auditTrail = new AuditTrail(null, new Users(commonDTO.getLoginUserId()), event,
 								commonDTO.getIpAddress(), new Date(), commonDTO.getSystemRemarks(),
-								commonDTO.getUserRemarks(),
-								populateRequestedDeviceDetails(commonDTO.getAgentRequestForAuditTrail()),
-								commonDTO.getUniqueDocCodeForAudit(), commonDTO.getModuleType(),
-								commonDTO.getDocumentPrimaryKey(), commonDTO.getModule(), commonDTO.getModuleId());
+								commonDTO.getUserRemarks(), commonDTO.getModule(), commonDTO.getModuleId());
 						auditTrailDao.save(auditTrail);
 					}
 			} catch (Exception e) {
