@@ -38,6 +38,7 @@ public class EmployeeQuestionService {
         EmployeeQuestions eQ = employeeQuestionRepository.getReferenceById(id);
         eQ.setResponse(response);
         eQ.setCompletedFlag(true);
+        employeeQuestionRepository.save(eQ);
         return true;
     }
 
@@ -47,7 +48,15 @@ public class EmployeeQuestionService {
         Date now = new Date();
         List<EmployeeQuestions> batch = new ArrayList<>(eq.size());
         for (EQuestions q : eq) {
-            batch.add(new EmployeeQuestions(null, e, q, null, false, now));
+            EmployeeQuestions row = new EmployeeQuestions(
+                    null,          // id (generated)
+                    e,   // employee
+                    q,             // template question
+                    null,          // answer (or default)
+                    false,         // completed
+                    now            // createdTime
+            );
+            batch.add(row);
         }
         if (!batch.isEmpty()) {
             employeeQuestionRepository.saveAll(batch);

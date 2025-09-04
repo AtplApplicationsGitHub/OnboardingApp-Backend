@@ -618,4 +618,9 @@ public class EmployeeService {
         return result;
     }
 
+    public String getConstant(String con) {
+        Constant constant = constantRepository.findByConstant(con);
+        return constant.getConstantValue();
+    }
+
 }

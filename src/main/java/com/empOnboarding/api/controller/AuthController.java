@@ -7,10 +7,12 @@ import java.util.Optional;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.empOnboarding.api.dto.CommonDTO;
 import com.empOnboarding.api.entity.Employee;
 import com.empOnboarding.api.entity.LoginOTPLog;
 import com.empOnboarding.api.repository.EmployeeRepository;
 import com.empOnboarding.api.repository.LoginOTPLogRepository;
+import com.empOnboarding.api.service.AuditTrailService;
 import com.empOnboarding.api.service.MailerService;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatus;
@@ -47,16 +49,19 @@ public class AuthController {
 
     private final MailerService mailerService;
 
+    private final AuditTrailService auditTrailService;
+
 
     public AuthController(UsersRepository usersRepository, TokenProvider tokenProvider, PasswordEncoder passwordEncoder,
                           EmployeeRepository employeeRepository, LoginOTPLogRepository loginOTPLogRepository,
-                          MailerService mailerService) {
+                          MailerService mailerService, AuditTrailService auditTrailService) {
         this.usersRepository = usersRepository;
         this.tokenProvider = tokenProvider;
         this.passwordEncoder = passwordEncoder;
         this.employeeRepository = employeeRepository;
         this.loginOTPLogRepository = loginOTPLogRepository;
         this.mailerService = mailerService;
+        this.auditTrailService = auditTrailService;
     }
 
     /**
@@ -89,6 +94,13 @@ public class AuthController {
                     response.setMessage(Constants.LOGIN_SUCCESS.getValue());
                     request.getSession().setAttribute("authToken", jwt);
                     request.getSession().setAttribute("id", user.get().getId().toString());
+                    CommonDTO dto = new CommonDTO();
+                    dto.setLoginFullName(user.get().getName());
+                    dto.setLoginUserId(user.get().getId());
+                    dto.setIpAddress(request.getRemoteAddr());
+                    dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+                    dto.setSystemRemarks(response.getMessage());
+                    auditTrailService.saveAuditTrail(Constants.USER_LOGIN.getValue(), dto);
                 } else {
                     response.setMessage(Constants.INVALID_PASSWORD.getValue());
                 }
@@ -116,6 +128,13 @@ public class AuthController {
                 response.setMessage(Constants.LOGIN_SUCCESS.getValue());
                 request.getSession().setAttribute("authToken", jwt);
                 request.getSession().setAttribute("id", employee.get().getId().toString());
+                CommonDTO dto = new CommonDTO();
+                dto.setLoginFullName(employee.get().getName());
+                dto.setLoginUserId(employee.get().getId());
+                dto.setIpAddress(request.getRemoteAddr());
+                dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+                dto.setSystemRemarks(response.getMessage());
+                auditTrailService.saveAuditTrail(Constants.USER_LOGIN.getValue(), dto);
             } else {
                 response.setMessage(Constants.INVALID_PASSWORD.getValue());
             }
