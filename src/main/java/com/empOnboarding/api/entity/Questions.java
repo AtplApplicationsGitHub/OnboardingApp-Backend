@@ -19,6 +19,7 @@ import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
+import com.empOnboarding.api.utils.CommonUtls;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -83,5 +84,15 @@ public class Questions implements java.io.Serializable {
 	public void addQuestionLevel(QuestionLevel ql) {
 	    ql.setQuestionId(this);
 	    this.questionLevels.add(ql);
+	}
+
+	@Override
+	public String toString() {
+		return (text == null ? "" : ", Question = " + text)
+				+ (period == null ? "" : ", Period = " + period)
+				+ (response == null ? "" : ", Response = " + response)
+				+ (complainceDay == null ? "" : ", Compliance Day = " + complainceDay)
+				+ (groupId.getName() == null ? "" : ", Group Name = " + groupId.getName());
+
 	}
 }

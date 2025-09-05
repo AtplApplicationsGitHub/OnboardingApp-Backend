@@ -190,4 +190,14 @@ public class CommonUtls {
 		dto.setRoleName(user.getRoleName());
 	}
 
+
+	public static String dateFormat(Date date) {
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		String requiredDate = null;
+		if (date != null) {
+			requiredDate = sdf.format(date);
+		}
+		return requiredDate;
+	}
+
 }

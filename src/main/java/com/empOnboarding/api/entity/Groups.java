@@ -66,4 +66,11 @@ public class Groups implements java.io.Serializable {
 	}
 
 
+	@Override
+	public String toString() {
+		return (name == null ? "" : ", Name = " + name)
+				+ (pgLead.getName() == null ? "" : ", Primary Group Lead = " + pgLead.getName())
+				+ (egLead.getName() == null ? "" : ", Escalation Group Lead = " + egLead.getName());
+	}
+
 }
