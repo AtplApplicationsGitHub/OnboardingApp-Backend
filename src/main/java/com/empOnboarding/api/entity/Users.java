@@ -57,8 +57,16 @@ public class Users implements java.io.Serializable {
 	public Users(Long id) {
 		this.id = id;
 	}
-	
-	
+
+
+	@Override
+	public String toString() {
+		return (name == null ? "" : ", Name = " + name)
+				+ (email == null ? "" : ", Email = " + email)
+				+ (role == null ? "" : ", Role = " + role)
+				+ (activeFlag == null ? "" : ", Active Flag = " + activeFlag);
+
+	}
 	
 
 }
