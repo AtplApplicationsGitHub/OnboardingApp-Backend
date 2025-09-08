@@ -51,7 +51,7 @@ public class TaskService {
     public void createTask(List<Employee> employees, UserPrincipal user) {
         Users actor = usersRepository.getReferenceById(user.getId());
         for (Employee emp : employees) {
-            List<Questions> questions = questionRepository.findDistinctByLevel(emp.getLevel());
+            List<Questions> questions = questionRepository.findDistinctByLevelAndDepartment(emp.getLevel(),emp.getDepartment());
             Map<Long, List<Questions>> byGroup = questions.stream()
                     .filter(q -> q.getGroupId() != null && q.getGroupId().getId() != null)
                     .collect(Collectors.groupingBy(q -> q.getGroupId().getId()));

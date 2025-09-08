@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.empOnboarding.api.dto.QuestionsDTO;
+import com.empOnboarding.api.entity.*;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,9 +18,6 @@ import org.springframework.stereotype.Service;
 import com.empOnboarding.api.dto.CommonDTO;
 import com.empOnboarding.api.dto.DropDownDTO;
 import com.empOnboarding.api.dto.GroupsDTO;
-import com.empOnboarding.api.entity.Constant;
-import com.empOnboarding.api.entity.Groups;
-import com.empOnboarding.api.entity.Users;
 import com.empOnboarding.api.repository.ConstantRepository;
 import com.empOnboarding.api.repository.GroupRepository;
 import com.empOnboarding.api.repository.QuestionRepository;
@@ -26,6 +25,7 @@ import com.empOnboarding.api.repository.UsersRepository;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
 import com.empOnboarding.api.utils.Constants;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class GroupService {
@@ -41,16 +41,19 @@ public class GroupService {
 	private final MailerService mailerService;
 	
 	private final UsersRepository usersRepository;
+
+	private final QuestionService questionService;
 	
 	public GroupService(GroupRepository groupRepository, AuditTrailService auditTrailService,
 			ConstantRepository constantRepository, MailerService mailerService,UsersRepository usersRepository,
-			QuestionRepository questionRepository) {
+			QuestionRepository questionRepository,QuestionService questionService) {
 		this.groupRepository = groupRepository;
 		this.auditTrailService = auditTrailService;
 		this.constantRepository = constantRepository;
 		this.mailerService = mailerService;
 		this.usersRepository = usersRepository;
 		this.questionRepository = questionRepository;
+		this.questionService = questionService;
 	}
 	
 	
@@ -144,5 +147,39 @@ public class GroupService {
 	public long totalGroupCount() {
 		return groupRepository.count();
 	}
+
+	@Transactional
+	public Boolean cloneGroup(GroupsDTO groupDto, UserPrincipal user) {
+		Long sourceGroupId = Long.valueOf(groupDto.getId());
+		Long pgLeadId      = Long.valueOf(groupDto.getPgLead());
+		Long egLeadId      = (groupDto.getEgLead() == null || groupDto.getEgLead().isBlank())
+				? null : Long.valueOf(groupDto.getEgLead());
+		Date now = new Date();
+		Users actor = new Users(user.getId());
+		Groups group = new Groups();
+		group.setName(groupDto.getName());
+		group.setPgLead(new Users(pgLeadId));
+		if (egLeadId != null) group.setEgLead(new Users(egLeadId));
+		group.setCreatedTime(now);
+		group.setUpdatedTime(now);
+		group.setCreatedBy(actor);
+		group.setUpdatedBy(actor);
+		group = groupRepository.save(group);
+		final String newGroupIdStr = String.valueOf(group.getId());
+		List<QuestionsDTO> originals = questionRepository.findAllByGroupIdId(sourceGroupId)
+				.stream()
+				.map(questionService::populateQuestion)
+				.peek(dto -> {
+					dto.setId(null);
+					dto.setGroupId(newGroupIdStr);
+				})
+				.toList();
+		for (QuestionsDTO qdto : originals) {
+			CommonDTO cdto = new CommonDTO();
+			questionService.createQuestion(qdto,cdto,user);
+		}
+		return true;
+	}
+
 
 }
