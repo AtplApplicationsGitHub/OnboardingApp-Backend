@@ -87,7 +87,7 @@ public class CommonUtls {
 		try {
 			if (!isCompletlyEmpty(dateInString)) {
 				SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-				simpleDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+				simpleDateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
 				date = simpleDateFormat.parse(dateInString);
 				timestamp = new Timestamp(date.getTime());
 			}
