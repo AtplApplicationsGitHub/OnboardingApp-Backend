@@ -151,15 +151,13 @@ public class GroupService {
 	@Transactional
 	public Boolean cloneGroup(GroupsDTO groupDto, UserPrincipal user) {
 		Long sourceGroupId = Long.valueOf(groupDto.getId());
-		Long pgLeadId      = Long.valueOf(groupDto.getPgLead());
-		Long egLeadId      = (groupDto.getEgLead() == null || groupDto.getEgLead().isBlank())
-				? null : Long.valueOf(groupDto.getEgLead());
+		Groups g = groupRepository.getReferenceById(sourceGroupId);
 		Date now = new Date();
 		Users actor = new Users(user.getId());
 		Groups group = new Groups();
-		group.setName(groupDto.getName());
-		group.setPgLead(new Users(pgLeadId));
-		if (egLeadId != null) group.setEgLead(new Users(egLeadId));
+		group.setName(g.getName());
+		group.setPgLead(g.getPgLead());
+		if (groupDto.getEgLead() != null) group.setEgLead(g.getEgLead());
 		group.setCreatedTime(now);
 		group.setUpdatedTime(now);
 		group.setCreatedBy(actor);

@@ -58,6 +58,10 @@ public class Users implements java.io.Serializable {
 		this.id = id;
 	}
 
+	public Users(String name) {
+		this.name = name;
+	}
+
 
 	@Override
 	public String toString() {
