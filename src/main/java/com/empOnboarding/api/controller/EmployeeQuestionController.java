@@ -1,7 +1,6 @@
 package com.empOnboarding.api.controller;
 
 import com.empOnboarding.api.dto.CommonDTO;
-import com.empOnboarding.api.dto.EmployeeDTO;
 import com.empOnboarding.api.security.CurrentUser;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.service.EmployeeQuestionService;
@@ -40,9 +39,5 @@ public class EmployeeQuestionController {
     public JSONObject filteredEmployeesQues(@PathVariable Long userId,@PathVariable String pageNo) throws Exception {
         return employeeQuestionService.filteredEmployeesQuestions(userId,pageNo);
     }
-
-
-
-
 
 }

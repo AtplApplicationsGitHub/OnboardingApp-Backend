@@ -18,11 +18,13 @@ public interface QuestionRepository extends JpaRepository<Questions, Long> {
 	@Query("""
     select distinct q
     from Questions q
-    join QuestionLevel ql on ql.questionId = q
-    where ql.level = :level
+    join QuestionLevel ql
+    join QuestionsDepartment qd
+    where ql.level = :level and qd.department.key = :department
 """)
-	List<Questions> findDistinctByLevel(@Param("level") String level);
+	List<Questions> findDistinctByLevelAndDepartment(@Param("level") String level,@Param("department") String department);
 
 	long countByGroupIdId(Long id);
-	
+
+	List<Questions> findAllByGroupIdId(Long groupId);
 }

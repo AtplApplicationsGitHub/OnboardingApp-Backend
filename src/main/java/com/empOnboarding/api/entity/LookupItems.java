@@ -81,6 +81,10 @@ public class LookupItems  implements java.io.Serializable, Diffable<LookupItems>
 		this.updatedTime = updatedTime;
 	}
 
+	public LookupItems(String key){
+		this.key = key;
+	}
+
 	@Override
 	public DiffResult<LookupItems> diff(LookupItems obj) {
 		DiffResult<LookupItems> build = new DiffBuilder<LookupItems>(this, obj, ToStringStyle.SHORT_PREFIX_STYLE)

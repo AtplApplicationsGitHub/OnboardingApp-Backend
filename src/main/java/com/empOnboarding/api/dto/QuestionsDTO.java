@@ -21,6 +21,7 @@ public class QuestionsDTO extends CommonDTO{
 	private String period;
 	private String complainceDay;
 	private List<String> questionLevel;
+	private List<String> questionDepartment;
 	private String groupId;
 	private String createdTime;
 	private String updatedTime;

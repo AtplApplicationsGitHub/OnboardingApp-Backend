@@ -57,7 +57,10 @@ public class Questions implements java.io.Serializable {
 	
 	@OneToMany(fetch = FetchType.LAZY, mappedBy = "questionId", cascade = CascadeType.ALL, orphanRemoval = true)
 	private Set<QuestionLevel> questionLevels = new HashSet<>(0);
-	
+
+	@OneToMany(fetch = FetchType.LAZY, mappedBy = "questionId", cascade = CascadeType.ALL, orphanRemoval = true)
+	private Set<QuestionsDepartment> questionDepartment = new HashSet<>(0);
+
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "updated_time", nullable = true, length = 19)
 	private Date updatedTime;

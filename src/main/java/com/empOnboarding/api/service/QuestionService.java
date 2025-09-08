@@ -3,6 +3,7 @@ package com.empOnboarding.api.service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.empOnboarding.api.entity.*;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -11,11 +12,6 @@ import org.springframework.stereotype.Service;
 
 import com.empOnboarding.api.dto.CommonDTO;
 import com.empOnboarding.api.dto.QuestionsDTO;
-import com.empOnboarding.api.entity.Constant;
-import com.empOnboarding.api.entity.Groups;
-import com.empOnboarding.api.entity.QuestionLevel;
-import com.empOnboarding.api.entity.Questions;
-import com.empOnboarding.api.entity.Users;
 import com.empOnboarding.api.repository.ConstantRepository;
 import com.empOnboarding.api.repository.QuestionRepository;
 import com.empOnboarding.api.security.UserPrincipal;
@@ -44,11 +40,17 @@ public class QuestionService {
 	
 	public Boolean createQuestion(QuestionsDTO qDto, CommonDTO dto, UserPrincipal user) {
 		Set<QuestionLevel> quesLevel = new HashSet<>();
+		Set<QuestionsDepartment> quesDep = new HashSet<>();
 		Questions ques = new Questions(null, qDto.getText(), qDto.getPeriod(), qDto.getComplainceDay(), qDto.getResponse() ,new Groups(Long.valueOf(qDto.getGroupId())),
-				quesLevel,new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
+				quesLevel,quesDep,new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
 		if (qDto.getQuestionLevel() != null) {
 			for (String level : qDto.getQuestionLevel()) {
 				quesLevel.add(new QuestionLevel(null,level,ques,new Date()));
+			}
+		}
+		if (qDto.getQuestionDepartment() != null) {
+			for (String dep : qDto.getQuestionDepartment()) {
+				quesDep.add(new QuestionsDepartment(null,ques,new LookupItems(dep)));
 			}
 		}
 		questionRepository.save(ques);
@@ -72,6 +74,11 @@ public class QuestionService {
 			level.add(qLevel.getLevel());
 		}
 		qDto.setQuestionLevel(level);
+		List<String> dep = new ArrayList<>();
+		for (QuestionsDepartment qDep : ques.getQuestionDepartment()) {
+			dep.add(qDep.getDepartment().getKey());
+		}
+		qDto.setQuestionDepartment(dep);
 		Constant c = constantRepository.findByConstant("DateFormat");
 		qDto.setCreatedTime(CommonUtls.datetoString(ques.getCreatedTime(),c.getConstantValue()));
 		qDto.setUpdatedTime(CommonUtls.datetoString(ques.getUpdatedTime(),c.getConstantValue()));

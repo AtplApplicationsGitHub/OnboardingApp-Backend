@@ -83,4 +83,9 @@ public class GroupController {
 	public long countGroup() {
 		return groupService.totalGroupCount();
 	}
+
+	@PostMapping("/cloneGroup")
+	public Boolean cloneGroup(@RequestBody GroupsDTO groupsDTO,@CurrentUser UserPrincipal user){
+		return groupService.cloneGroup(groupsDTO,user);
+	}
 }
