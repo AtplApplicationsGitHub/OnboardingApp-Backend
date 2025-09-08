@@ -18,7 +18,7 @@ public interface AuditTrailRepository extends JpaRepository<AuditTrail, UUID> {
 
 	List<AuditTrail> findByUsersIdOrderByIdDesc(Long userId);
 
-	@Query("SELECT a FROM AuditTrail a  WHERE DATE(a.createdTime) =:fromDate AND DATE(a.createdTime) =:toDate\r\n"
+	@Query("SELECT a FROM AuditTrail a  WHERE a.createdTime >= :fromDate AND a.createdTime < :toDate\r\n"
 			+ " ORDER BY a.createdTime DESC")
 	Page<AuditTrail> findByFromDataAndToDate(@Param("fromDate") Date fromDate, @Param("toDate") Date toDate,
 			Pageable pageable);
@@ -30,31 +30,31 @@ public interface AuditTrailRepository extends JpaRepository<AuditTrail, UUID> {
 
 	List<AuditTrail> findByEvent(String event);
 
-	@Query("SELECT e FROM AuditTrail e WHERE e.event IN :columnData AND e.module IN :module AND e.users.name IN :userName AND DATE(e.createdTime) = :fromDate AND DATE(e.createdTime) = :toDate\r\n"
+	@Query("SELECT e FROM AuditTrail e WHERE e.event IN :columnData AND e.module IN :module AND e.users.name IN :userName AND e.createdTime >= :fromDate AND e.createdTime < :toDate\r\n"
 			+ " ORDER BY e.createdTime DESC")
 	Page<AuditTrail> findByEvents(List<String> columnData, List<String> module,
 			@Param("userName") List<String> userName, @Param("fromDate") Date fromDate, @Param("toDate") Date toDate,
 			Pageable pageable);
 
-	@Query("SELECT e FROM AuditTrail e WHERE e.event IN :columnData AND DATE(e.createdTime) = :fromDate AND DATE(e.createdTime) = :toDate\r\n"
+	@Query("SELECT e FROM AuditTrail e WHERE e.event IN :columnData AND e.createdTime >= :fromDate AND e.createdTime < :toDate\r\n"
 			+ " ORDER BY e.createdTime DESC")
 	Page<AuditTrail> findByColumnData(List<String> columnData, Date fromDate, Date toDate, Pageable pageable);
 
-	@Query("SELECT e FROM AuditTrail e WHERE e.module IN :module AND DATE(e.createdTime)= :fromDate AND DATE(e.createdTime)= :toDate\r\n"
+	@Query("SELECT e FROM AuditTrail e WHERE e.module IN :module AND e.createdTime >= :fromDate AND e.createdTime < :toDate\r\n"
 			+ " ORDER BY e.createdTime DESC")
 	Page<AuditTrail> findByModuleData(List<String> module, Date fromDate, Date toDate, Pageable pageable);
 
-	@Query("SELECT e FROM AuditTrail e WHERE e.users.name IN :userName AND DATE(e.createdTime) = :fromDate AND DATE(e.createdTime) = :toDate\r\n"
+	@Query("SELECT e FROM AuditTrail e WHERE e.users.name IN :userName AND e.createdTime >= :fromDate AND e.createdTime < :toDate\r\n"
 			+ " ORDER BY e.createdTime DESC")
 	Page<AuditTrail> findByUserName(@Param("userName") List<String> userName, Date fromDate, Date toDate,
 			Pageable pageable);
 
-	@Query("SELECT e FROM AuditTrail e WHERE e.event IN :columnData AND e.users.name IN :userName AND DATE(e.createdTime) = :fromDate AND DATE(e.createdTime) = :toDate\r\n"
+	@Query("SELECT e FROM AuditTrail e WHERE e.event IN :columnData AND e.users.name IN :userName AND e.createdTime >= :fromDate AND e.createdTime < :toDate\r\n"
 			+ " ORDER BY e.createdTime DESC")
 	Page<AuditTrail> findByEventAndUserName(List<String> columnData, @Param("userName") List<String> userName,
 			Date fromDate, Date toDate, Pageable pageable);
 
-	@Query("SELECT e FROM AuditTrail e WHERE e.module IN :module AND e.users.name IN :userName AND DATE(e.createdTime) = :fromDate AND DATE(e.createdTime) = :toDate\r\n"
+	@Query("SELECT e FROM AuditTrail e WHERE e.module IN :module AND e.users.name IN :userName AND e.createdTime >= :fromDate AND e.createdTime < :toDate\r\n"
 			+ " ORDER BY e.createdTime DESC")
 	Page<AuditTrail> findByModuleAndUserName(List<String> module, List<String> userName, Date fromDate, Date toDate,
 			Pageable pageable);
