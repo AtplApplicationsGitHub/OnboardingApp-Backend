@@ -195,23 +195,46 @@ public class TaskService {
     public TaskQuestionsDTO populateTaskQuestion(TaskQuestions taskQuestions, LocalDate baseDate) {
         TaskQuestionsDTO dto = new TaskQuestionsDTO();
         dto.setId(taskQuestions.getId().toString());
-        dto.setQuestionId(taskQuestions.getQuestionId().getText());
+        
+        try {
+            // Check if the question exists and is accessible
+            Questions question = taskQuestions.getQuestionId();
+            if (question != null) {
+                dto.setQuestionId(question.getText());
+                
+                int offsetDays = question.getPeriod().equalsIgnoreCase("after")
+                        ?  Integer.parseInt(question.getComplainceDay())
+                        : -Integer.parseInt(question.getComplainceDay());
+                LocalDate complianceDate = baseDate.plusDays(offsetDays);
 
-        int offsetDays = taskQuestions.getQuestionId().getPeriod().equalsIgnoreCase("after")
-                ?  Integer.parseInt(taskQuestions.getQuestionId().getComplainceDay())
-                : -Integer.parseInt(taskQuestions.getQuestionId().getComplainceDay());
-        LocalDate complianceDate = baseDate.plusDays(offsetDays);
-
-        dto.setOverDueFlag(!"completed".equalsIgnoreCase(taskQuestions.getStatus())
-                && complianceDate.isBefore(LocalDate.now()));
-        Date utilDate = java.sql.Date.valueOf(complianceDate);
-        Constant c = constantRepository.findByConstant("DateFormat");
-        String formattedDate = CommonUtls.datetoString(utilDate, c.getConstantValue());
-        dto.setComplianceDay(formattedDate);
-        dto.setResponseType(taskQuestions.getQuestionId().getResponse());
+                dto.setOverDueFlag(!"completed".equalsIgnoreCase(taskQuestions.getStatus())
+                        && complianceDate.isBefore(LocalDate.now()));
+                Date utilDate = java.sql.Date.valueOf(complianceDate);
+                Constant c = constantRepository.findByConstant("DateFormat");
+                String formattedDate = CommonUtls.datetoString(utilDate, c.getConstantValue());
+                dto.setComplianceDay(formattedDate);
+                dto.setResponseType(question.getResponse());
+                dto.setCreatedTime(question.getCreatedTime().toString());
+            } else {
+                // Handle missing question gracefully
+                dto.setQuestionId("Question not found (ID: " + taskQuestions.getId() + ")");
+                dto.setComplianceDay(baseDate.toString());
+                dto.setResponseType("TEXT");
+                dto.setOverDueFlag(false);
+                dto.setCreatedTime(new Date().toString());
+            }
+        } catch (Exception e) {
+            // Handle any Hibernate proxy exceptions or missing entities
+            System.err.println("Error loading question for TaskQuestion ID " + taskQuestions.getId() + ": " + e.getMessage());
+            dto.setQuestionId("Question not available (Error loading question)");
+            dto.setComplianceDay(baseDate.toString());
+            dto.setResponseType("TEXT");
+            dto.setOverDueFlag(false);
+            dto.setCreatedTime(new Date().toString());
+        }
+        
         dto.setResponse(taskQuestions.getResponse());
         dto.setStatus(taskQuestions.getStatus());
-        dto.setCreatedTime(taskQuestions.getQuestionId().getCreatedTime().toString());
         return dto;
     }
 

@@ -1,6 +1,8 @@
 package com.empOnboarding.api.controller;
 
 import com.empOnboarding.api.dto.CommonDTO;
+import com.empOnboarding.api.dto.EmployeeDTO;
+import com.empOnboarding.api.dto.EmployeeQuestionDTO;
 import com.empOnboarding.api.security.CurrentUser;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.service.EmployeeQuestionService;
@@ -9,6 +11,7 @@ import org.json.simple.JSONObject;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 
 @RestController
@@ -38,6 +41,16 @@ public class EmployeeQuestionController {
     @PostMapping("/filteredEmployeesQues/{userId}/{pageNo}")
     public JSONObject filteredEmployeesQues(@PathVariable Long userId,@PathVariable String pageNo) throws Exception {
         return employeeQuestionService.filteredEmployeesQuestions(userId,pageNo);
+    }
+
+    @GetMapping("/getByTaskId/{taskId}")
+    public List<EmployeeQuestionDTO> getEmployeeQuestionsByTask(@PathVariable String taskId) {
+        return employeeQuestionService.getEmployeeQuestionsByTask(taskId);
+    }
+
+    @GetMapping("/employeesWithQuestions")
+    public List<Long> getEmployeesWithQuestions() {
+        return employeeQuestionService.getEmployeesWithQuestions();
     }
 
 }
