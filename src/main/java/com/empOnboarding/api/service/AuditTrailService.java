@@ -246,7 +246,7 @@ public class AuditTrailService {
 	public List<MultiSelectDropDownDTO> getUserByName() {
 
 		List<MultiSelectDropDownDTO> list = new ArrayList<>();
-		List<Users> optional = userRepo.loadAllActiveUsers(Constants.Y, Constants.N);
+		List<Users> optional = userRepo.loadAllActiveUsers(Constants.Y);
 
 		if (!optional.isEmpty()) {
 			list = optional.stream().map(d -> new MultiSelectDropDownDTO(d.getId(), d.getName()))
@@ -257,7 +257,7 @@ public class AuditTrailService {
 
 	public List<UserMultiSelectDropDown> getUserDropDown() {
 		List<UserMultiSelectDropDown> list = new ArrayList<>();
-		List<Users> optional = userRepo.loadAllActiveUsers(Constants.Y, Constants.N);
+		List<Users> optional = userRepo.loadAllActiveUsers(Constants.Y);
 
 		if (!optional.isEmpty()) {
 			list = optional.stream().map(d -> new UserMultiSelectDropDown(d.getId(), d.getName())).collect(Collectors.toList());
