@@ -4,9 +4,11 @@ import com.empOnboarding.api.dto.EmployeeQuestionDTO;
 import com.empOnboarding.api.entity.EQuestions;
 import com.empOnboarding.api.entity.Employee;
 import com.empOnboarding.api.entity.EmployeeQuestions;
+import com.empOnboarding.api.entity.Task;
 import com.empOnboarding.api.repository.EQuestionsRepository;
 import com.empOnboarding.api.repository.EmployeeQuestionRepository;
 import com.empOnboarding.api.repository.EmployeeRepository;
+import com.empOnboarding.api.repository.TaskRepository;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,11 +29,14 @@ public class EmployeeQuestionService {
 
     private final EmployeeRepository employeeRepository;
 
+    private final TaskRepository taskRepository;
+
     public EmployeeQuestionService(EmployeeQuestionRepository employeeQuestionRepository,EQuestionsRepository eQuestionsRepository,
-                                   EmployeeRepository employeeRepository){
+                                   EmployeeRepository employeeRepository, TaskRepository taskRepository){
         this.employeeQuestionRepository = employeeQuestionRepository;
         this.eQuestionsRepository = eQuestionsRepository;
         this.employeeRepository = employeeRepository;
+        this.taskRepository = taskRepository;
     }
 
     public Boolean createAnswer(Long id, String response){
@@ -48,14 +53,12 @@ public class EmployeeQuestionService {
         Date now = new Date();
         List<EmployeeQuestions> batch = new ArrayList<>(eq.size());
         for (EQuestions q : eq) {
-            EmployeeQuestions row = new EmployeeQuestions(
-                    null,          // id (generated)
-                    e,   // employee
-                    q,             // template question
-                    null,          // answer (or default)
-                    false,         // completed
-                    now            // createdTime
-            );
+            EmployeeQuestions row = new EmployeeQuestions();
+            row.setEmployeeId(e);   
+            row.setQuestionId(q);             
+            row.setResponse(null);         
+            row.setCompletedFlag(false);         
+            row.setCreatedTime(now);            
             batch.add(row);
         }
         if (!batch.isEmpty()) {
@@ -83,6 +86,31 @@ public class EmployeeQuestionService {
         json.put("commonListDto", list);
         json.put("totalElements", empQuestions.getTotalElements());
         return json;
+    }
+
+    public List<EmployeeQuestionDTO> getAllEmployeeQuestions(Long employeeId) {
+        List<EmployeeQuestions> empQuestions = employeeQuestionRepository.findAllByEmployeeIdIdOrderByCreatedTimeDesc(employeeId);
+        return empQuestions.stream().map(this::populateEmployeeDto).collect(Collectors.toList());
+    }
+
+    public List<EmployeeQuestionDTO> getEmployeeQuestionsByTask(String taskId) {
+        // Get the task to find the associated employee
+        Task task = taskRepository.findById(taskId).orElse(null);
+        if (task == null || task.getEmployeeId() == null) {
+            return new ArrayList<>();
+        }
+        
+        Long employeeId = task.getEmployeeId().getId();
+        return getAllEmployeeQuestions(employeeId);
+    }
+
+    public boolean hasEmployeeQuestions(Long employeeId) {
+        List<EmployeeQuestions> questions = employeeQuestionRepository.findAllByEmployeeIdIdOrderByCreatedTimeDesc(employeeId);
+        return !questions.isEmpty();
+    }
+
+    public List<Long> getEmployeesWithQuestions() {
+        return employeeQuestionRepository.findDistinctEmployeeIds();
     }
 
 }
