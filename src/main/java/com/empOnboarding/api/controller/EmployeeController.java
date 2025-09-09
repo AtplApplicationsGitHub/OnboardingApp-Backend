@@ -78,8 +78,9 @@ public class EmployeeController {
 	}
 
 	@PostMapping("/generateAddEmployeeExcel")
-	public ResponseEntity<PdfDTO> downloadExcel(CommonDTO dto,@CurrentUser UserPrincipal user, HttpServletRequest request,
-												HttpServletResponse response) throws Exception {
+	public ResponseEntity<PdfDTO> downloadExcel(@CurrentUser UserPrincipal user,
+												HttpServletRequest request) throws Exception {
+		CommonDTO dto = new CommonDTO();
 		CommonUtls.populateCommonDto(user,dto);
 		dto.setIpAddress(request.getRemoteAddr());
 		dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));

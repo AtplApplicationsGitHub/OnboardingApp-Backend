@@ -15,8 +15,8 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
 
 	Optional<Users> findByNameOrEmail(String username, String email);
 
-	@Query(value = "SELECT u.* FROM users u \r\n" + "WHERE u.active_flag =:y AND u.delete_flag =:n", nativeQuery = true)
-	List<Users> loadAllActiveUsers(String y, String n);
+	@Query(value = "SELECT u.* FROM users u \r\n" + "WHERE u.active_flag =:y ", nativeQuery = true)
+	List<Users> loadAllActiveUsers(String y);
 
 	Page<Users> findAllByRoleOrderByCreatedTimeDesc(String role, Pageable page);
 
