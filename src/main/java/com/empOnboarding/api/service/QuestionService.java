@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.empOnboarding.api.entity.*;
+import com.empOnboarding.api.repository.LookupItemsRepository;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,14 +29,17 @@ public class QuestionService {
 	private final ConstantRepository constantRepository;
 	
 	private final MailerService mailerService;
+
+	private final LookupItemsRepository lookupItemsRepository;
 	
 	
 	public QuestionService(QuestionRepository questionRepository,AuditTrailService auditTrailService,
-			ConstantRepository constantRepository, MailerService mailerService) {
+			ConstantRepository constantRepository, MailerService mailerService,LookupItemsRepository lookupItemsRepository) {
 		this.questionRepository = questionRepository;
 		this.auditTrailService = auditTrailService;
 		this.constantRepository = constantRepository;
 		this.mailerService = mailerService;
+		this.lookupItemsRepository = lookupItemsRepository;
 	}
 	
 	public Boolean createQuestion(QuestionsDTO qDto, CommonDTO dto, UserPrincipal user) {
@@ -50,7 +54,8 @@ public class QuestionService {
 		}
 		if (qDto.getQuestionDepartment() != null) {
 			for (String dep : qDto.getQuestionDepartment()) {
-				quesDep.add(new QuestionsDepartment(null,ques,new LookupItems(dep)));
+				Optional<LookupItems> l = lookupItemsRepository.findByKey(dep);
+                l.ifPresent(lookupItems -> quesDep.add(new QuestionsDepartment(null, ques, lookupItems)));
 			}
 		}
 		questionRepository.save(ques);
