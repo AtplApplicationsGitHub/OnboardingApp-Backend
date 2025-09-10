@@ -45,7 +45,7 @@ public class QuestionService {
 	public Boolean createQuestion(QuestionsDTO qDto, CommonDTO dto, UserPrincipal user) {
 		Set<QuestionLevel> quesLevel = new HashSet<>();
 		Set<QuestionsDepartment> quesDep = new HashSet<>();
-		Questions ques = new Questions(null, qDto.getText(), qDto.getPeriod(), qDto.getComplainceDay(), qDto.getResponse() ,new Groups(Long.valueOf(qDto.getGroupId())),
+		Questions ques = new Questions(null, qDto.getText(),qDto.getDefaultFlag(),qDto.getPeriod(), qDto.getComplainceDay(), qDto.getResponse() ,new Groups(Long.valueOf(qDto.getGroupId())),
 				quesLevel,quesDep,new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
 		if (qDto.getQuestionLevel() != null) {
 			for (String level : qDto.getQuestionLevel()) {
@@ -69,6 +69,7 @@ public class QuestionService {
 		QuestionsDTO qDto = new QuestionsDTO();
 		qDto.setId(ques.getId().toString());
 		qDto.setText(ques.getText());
+		qDto.setDefaultFlag(ques.getDefaultFlag());
 		qDto.setPeriod(ques.getPeriod());
 		qDto.setResponse(ques.getResponse());
 		qDto.setGroupId(ques.getGroupId().getId().toString());
@@ -111,6 +112,7 @@ public class QuestionService {
 	        Questions q = quesOpt.get();
 	        q.setText(qDto.getText());
 	        q.setResponse(qDto.getResponse());
+			q.setDefaultFlag(qDto.getDefaultFlag());
 			q.setPeriod(qDto.getPeriod());
 	        q.setComplainceDay(qDto.getComplainceDay());
 			q.setUpdatedBy(new Users(user.getId()));
