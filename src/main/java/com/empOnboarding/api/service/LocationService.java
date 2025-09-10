@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.empOnboarding.api.dto.EmployeeDTO;
 import com.empOnboarding.api.dto.LocationDTO;
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.LocationRepository;
@@ -29,9 +30,13 @@ public class LocationService {
 
     private final AuditTrailService auditTrailService;
 
-    public LocationService(LocationRepository locationRepository,AuditTrailService auditTrailService){
+    private final ConstantRepository constantRepository;
+
+    public LocationService(LocationRepository locationRepository,AuditTrailService auditTrailService,
+                           ConstantRepository constantRepository){
         this.locationRepository = locationRepository;
         this.auditTrailService = auditTrailService;
+        this.constantRepository = constantRepository;
     }
 
     public Boolean createLocation(LocationDTO lDto, CommonDTO dto, UserPrincipal user) throws IOException {
@@ -51,17 +56,39 @@ public class LocationService {
         return true;
     }
 
-//    public LocationDTO populateLocation(Users user) {
-//        UsersDTO userDto = new UsersDTO();
-//        userDto.setId(user.getId().toString());
-//        userDto.setName(user.getName());
-//        userDto.setEmail(user.getEmail());
-//        userDto.setRole(user.getRole());
-//        userDto.setActiveFlag(user.getActiveFlag());
-//        Constant c = constantRepository.findByConstant("DateFormat");
-//        userDto.setCreatedTime(CommonUtls.datetoString(user.getCreatedTime(),c.getConstantValue()));
-//        userDto.setUpdatedTime(CommonUtls.datetoString(user.getUpdatedTime(),c.getConstantValue()));
-//        return userDto;
-//    }
+    public LocationDTO populateLocation(Location l) {
+        LocationDTO locationDto = new LocationDTO();
+        locationDto.setId(l.getId().toString());
+        locationDto.setLocation(l.getLocation());
+        Constant c = constantRepository.findByConstant("DateFormat");
+        locationDto.setCreatedTime(CommonUtls.datetoString(l.getCreatedTime(),c.getConstantValue()));
+        locationDto.setUpdatedTime(CommonUtls.datetoString(l.getUpdatedTime(),c.getConstantValue()));
+        return locationDto;
+    }
+
+    public JSONObject filteredLocation(String pageNo, String location) {
+        JSONObject json = new JSONObject();
+        Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
+        List<LocationDTO> list;
+        Page<Location> lList;
+        if (!CommonUtls.isCompletlyEmpty(location)) {
+            lList = locationRepository.findAllByLocationOrderByCreatedTimeDesc(location, pageable);
+        } else {
+            lList = locationRepository.findAllByOrderByCreatedTimeDesc(pageable);
+        }
+        list = lList.stream().map(this::populateLocation).collect(Collectors.toList());
+        json.put("commonListDto", list);
+        json.put("totalElements", lList.getTotalElements());
+        return json;
+    }
+
+    public LocationDTO findById(Long id) {
+        LocationDTO lDTO = null;
+        Optional<Location> isLocation = locationRepository.findById(id);
+        if (isLocation.isPresent()) {
+            lDTO = populateLocation(isLocation.get());
+        }
+        return lDTO;
+    }
 
 }
