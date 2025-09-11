@@ -52,7 +52,7 @@ public class Questions implements java.io.Serializable {
 	@Column(name = "response")
 	private String response;
 
-	@Column(name = "default")
+	@Column(name = "default_flag")
 	private String defaultFlag;
 	
 	@ManyToOne(fetch = FetchType.LAZY)

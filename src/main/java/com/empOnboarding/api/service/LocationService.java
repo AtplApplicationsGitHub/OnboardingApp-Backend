@@ -40,10 +40,9 @@ public class LocationService {
     }
 
     public Boolean createLocation(LocationDTO lDto, CommonDTO dto, UserPrincipal user) throws IOException {
-        Users actor = new Users(user.getId());
         Set<LabLocation> lab = new HashSet<>();
         Location l = new Location(null, lDto.getLocation(),lab,new Date(),
-                new Date(),actor,actor);
+                new Date(),new Users(user.getId()),new Users(user.getId()));
         if (l.getLab() != null) {
             for (String lab1 : lDto.getLab()) {
                 lab.add(new LabLocation(null,lab1,l));
@@ -60,6 +59,11 @@ public class LocationService {
         LocationDTO locationDto = new LocationDTO();
         locationDto.setId(l.getId().toString());
         locationDto.setLocation(l.getLocation());
+        List<String> lab = new ArrayList<>();
+        for (LabLocation labs : l.getLab()) {
+            lab.add(labs.getLab());
+        }
+        locationDto.setLab(lab);
         Constant c = constantRepository.findByConstant("DateFormat");
         locationDto.setCreatedTime(CommonUtls.datetoString(l.getCreatedTime(),c.getConstantValue()));
         locationDto.setUpdatedTime(CommonUtls.datetoString(l.getUpdatedTime(),c.getConstantValue()));

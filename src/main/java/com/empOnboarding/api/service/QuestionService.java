@@ -45,7 +45,7 @@ public class QuestionService {
 	public Boolean createQuestion(QuestionsDTO qDto, CommonDTO dto, UserPrincipal user) {
 		Set<QuestionLevel> quesLevel = new HashSet<>();
 		Set<QuestionsDepartment> quesDep = new HashSet<>();
-		Questions ques = new Questions(null, qDto.getText(),qDto.getDefaultFlag(),qDto.getPeriod(), qDto.getComplainceDay(), qDto.getResponse() ,new Groups(Long.valueOf(qDto.getGroupId())),
+		Questions ques = new Questions(null, qDto.getText(),qDto.getPeriod(), qDto.getComplainceDay(), qDto.getResponse() , qDto.getDefaultFlag(), new Groups(Long.valueOf(qDto.getGroupId())),
 				quesLevel,quesDep,new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
 		if (qDto.getQuestionLevel() != null) {
 			for (String level : qDto.getQuestionLevel()) {
