@@ -2,6 +2,7 @@ package com.empOnboarding.api.entity;
 
 import static javax.persistence.GenerationType.IDENTITY;
 
+import java.io.Serial;
 import java.util.Date;
 
 import javax.persistence.Column;
@@ -28,6 +29,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class QuestionLevel implements java.io.Serializable {
 	
+	@Serial
 	private static final long serialVersionUID = 1L;
 	@Id
 	@GeneratedValue(strategy = IDENTITY)

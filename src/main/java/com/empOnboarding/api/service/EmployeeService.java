@@ -214,9 +214,12 @@ public class EmployeeService {
         );
         List<String> lab = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Lab").stream().map(LookupItems::getValue).toList();
         List<String> level = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Level").stream().map(LookupItems::getValue).toList();
+        List<String> department = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Department").stream().map(LookupItems::getValue).toList();
 
         final String[] LEVEL_ARR = (level.isEmpty() ? new String[]{} : level.toArray(new String[0]));
         final String[] LAB_ARR   = (lab.isEmpty()   ? new String[]{} : lab.toArray(new String[0]));
+        final String[] DEP_ARR   = (lab.isEmpty()   ? new String[]{} : department.toArray(new String[0]));
+
 
         final int FIRST_DATA_ROW = 1;
         final int LAST_DATA_ROW = 1000;
@@ -234,6 +237,8 @@ public class EmployeeService {
             final int dojColIdx = headers.indexOf("DOJ");
             final int levelColIdx = headers.indexOf("Level");
             final int labColIdx = headers.indexOf("Lab Allocation");
+            final int depColIdx = headers.indexOf("Department");
+
 
             if (dojColIdx >= 0) {
                 for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
@@ -249,6 +254,9 @@ public class EmployeeService {
             }
             if (labColIdx >= 0) {
                 addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, labColIdx, LAB_ARR);
+            }
+            if (depColIdx >= 0) {
+                addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, depColIdx, DEP_ARR);
             }
 
             // Freeze header and autosize for readability
@@ -390,6 +398,24 @@ public class EmployeeService {
                 result.put("errors", errors);
                 return result;
             }
+
+            final int emailCol = colIndex.getOrDefault(COL_EMAIL, -1);
+            Set<String> sheetEmailsLower = new HashSet<>();     // emails seen in this file (lowercased)
+            Set<String> allEmailsLower = new HashSet<>();       // to batch check against DB
+
+            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+                String raw = emailCol >= 0 ? getCellString(row, emailCol) : null;
+                String normalized = normalizeEmail(raw);
+                if (normalized != null) allEmailsLower.add(normalized);
+            }
+
+            // 2) One DB round-trip: which of those already exist?
+            Set<String> existingEmailsLower = allEmailsLower.isEmpty()
+                    ? Set.of()
+                    : employeeRepositrory.findExistingEmailsLower(allEmailsLower);
+
             for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null) continue;
@@ -481,6 +507,16 @@ public class EmployeeService {
         }
         return map;
     }
+
+    private static String normalizeEmail(String email) {
+        if (email == null) return null;
+        String s = email.trim();
+        if (s.isEmpty()) return null;
+        // basic sanity (optional): must contain '@'
+        if (!s.contains("@")) return null;
+        return s.toLowerCase(Locale.ROOT);
+    }
+
 
     private String normalizeHeader(String s) {
         return s == null ? "" : s.trim().toLowerCase(Locale.ROOT);

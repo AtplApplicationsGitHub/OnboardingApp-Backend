@@ -1,10 +1,8 @@
 package com.empOnboarding.api.service;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import com.empOnboarding.api.dto.EmployeeDTO;
 import com.empOnboarding.api.dto.LocationDTO;
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.LocationRepository;
@@ -13,13 +11,10 @@ import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.empOnboarding.api.dto.CommonDTO;
-import com.empOnboarding.api.dto.UsersDTO;
 import com.empOnboarding.api.repository.ConstantRepository;
-import com.empOnboarding.api.repository.UsersRepository;
 import com.empOnboarding.api.utils.CommonUtls;
 import com.empOnboarding.api.utils.Constants;
 
@@ -39,7 +34,7 @@ public class LocationService {
         this.constantRepository = constantRepository;
     }
 
-    public Boolean createLocation(LocationDTO lDto, CommonDTO dto, UserPrincipal user) throws IOException {
+    public Boolean createLocation(LocationDTO lDto, CommonDTO dto, UserPrincipal user) {
         Set<LabLocation> lab = new HashSet<>();
         Location l = new Location(null, lDto.getLocation(),lab,new Date(),
                 new Date(),new Users(user.getId()),new Users(user.getId()));
@@ -70,6 +65,7 @@ public class LocationService {
         return locationDto;
     }
 
+    @SuppressWarnings("unchecked")
     public JSONObject filteredLocation(String pageNo, String location) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);

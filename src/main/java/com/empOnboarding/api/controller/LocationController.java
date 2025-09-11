@@ -1,7 +1,6 @@
 package com.empOnboarding.api.controller;
 
 import com.empOnboarding.api.dto.CommonDTO;
-import com.empOnboarding.api.dto.EmployeeDTO;
 import com.empOnboarding.api.dto.LocationDTO;
 import com.empOnboarding.api.security.CurrentUser;
 import com.empOnboarding.api.security.UserPrincipal;

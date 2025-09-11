@@ -78,14 +78,13 @@ public class EmployeeController {
 	}
 
 	@PostMapping("/generateAddEmployeeExcel")
-	public ResponseEntity<PdfDTO> downloadExcel(@CurrentUser UserPrincipal user,
+	public PdfDTO downloadExcel(@CurrentUser UserPrincipal user,
 												HttpServletRequest request) throws Exception {
 		CommonDTO dto = new CommonDTO();
 		CommonUtls.populateCommonDto(user,dto);
 		dto.setIpAddress(request.getRemoteAddr());
 		dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
-		return ResponseEntity.status(HttpStatus.OK)
-				.body(employeeService.generateExcel(dto));
+		return employeeService.generateExcel(dto);
 	}
 
 	@PostMapping(value = "/importEmployees", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
