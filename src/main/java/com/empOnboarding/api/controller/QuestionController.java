@@ -1,13 +1,7 @@
 package com.empOnboarding.api.controller;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import com.empOnboarding.api.dto.PdfDTO;
-import com.empOnboarding.api.utils.CommonUtls;
 import org.json.simple.JSONObject;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,7 +43,7 @@ public class QuestionController {
 	}
 	
 	@PostMapping("/findFilteredQuestionByGroup/{pageNo}/{groupId}")
-	public JSONObject findFilteredGroups(@PathVariable String pageNo, @PathVariable Long groupId) throws Exception {
+	public JSONObject findFilteredGroups(@PathVariable String pageNo, @PathVariable Long groupId){
         return questionService.findByGroupId(groupId,pageNo);
     }
 	
@@ -67,7 +61,7 @@ public class QuestionController {
 	}
 	
 	@DeleteMapping("/deleteQuestion/{id}")
-	public void deleteQuestion(@PathVariable Long id, CommonDTO dto) throws Exception {
+	public void deleteQuestion(@PathVariable Long id, CommonDTO dto){
 		questionService.deleteQuestion(id, dto);
 	}
 	

@@ -74,6 +74,10 @@ public class TaskService {
                     TaskQuestions tq = new TaskQuestions();
                     tq.setTaskId(task);
                     tq.setQuestionId(qn);
+                    if(qn.getDefaultFlag().equalsIgnoreCase("yes")){
+                        tq.setResponse("YES");
+                        tq.setStatus("completed");
+                    }
                     task.getTaskQuestions().add(tq);
                 }
                 taskRepository.save(task);
@@ -118,7 +122,6 @@ public class TaskService {
 
     @SuppressWarnings("unchecked")
     public JSONObject filteredTaskForAdmin(String search,String pageNo) {
-        Constant c = constantRepository.findByConstant("");
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         Page<TaskProjection> taskList;
@@ -168,7 +171,7 @@ public class TaskService {
         Set<TaskQuestions> tq = task.getTaskQuestions();
         if(ef.isPresent()){
             tDto.setEFId(ef.get().getId().toString());
-            tDto.setEFStar(ef.get().getStar().toString());
+            tDto.setEFStar(ef.get().getStar());
             tDto.setFeedback(ef.get().getFeedback());
         }
         long completed = tq.stream()
@@ -240,7 +243,7 @@ public class TaskService {
 
 
     public List<TaskDTO> findById(String id) {
-        List<TaskDTO> tDTOs = new ArrayList<>();
+        List<TaskDTO> tDTOs;
         List<String> tId = Arrays.stream(id.split(",")).toList();
         List<Task> t =  taskRepository.findAllById(tId);
         tDTOs = t.stream().map(this::populateTask).collect(Collectors.toList());

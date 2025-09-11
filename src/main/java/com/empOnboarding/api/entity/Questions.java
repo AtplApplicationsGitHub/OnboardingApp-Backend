@@ -2,6 +2,7 @@ package com.empOnboarding.api.entity;
 
 import static javax.persistence.GenerationType.IDENTITY;
 
+import java.io.Serial;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -19,7 +20,6 @@ import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
-import com.empOnboarding.api.utils.CommonUtls;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -33,6 +33,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Questions implements java.io.Serializable {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 	@Id
 	@GeneratedValue(strategy = IDENTITY)
@@ -50,6 +51,9 @@ public class Questions implements java.io.Serializable {
 	
 	@Column(name = "response")
 	private String response;
+
+	@Column(name = "default_flag")
+	private String defaultFlag;
 	
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "group_id", referencedColumnName = "id")

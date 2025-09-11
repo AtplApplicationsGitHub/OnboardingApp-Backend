@@ -1,6 +1,5 @@
 package com.empOnboarding.api.service;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -12,13 +11,10 @@ import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.empOnboarding.api.dto.CommonDTO;
-import com.empOnboarding.api.dto.UsersDTO;
 import com.empOnboarding.api.repository.ConstantRepository;
-import com.empOnboarding.api.repository.UsersRepository;
 import com.empOnboarding.api.utils.CommonUtls;
 import com.empOnboarding.api.utils.Constants;
 
@@ -29,16 +25,19 @@ public class LocationService {
 
     private final AuditTrailService auditTrailService;
 
-    public LocationService(LocationRepository locationRepository,AuditTrailService auditTrailService){
+    private final ConstantRepository constantRepository;
+
+    public LocationService(LocationRepository locationRepository,AuditTrailService auditTrailService,
+                           ConstantRepository constantRepository){
         this.locationRepository = locationRepository;
         this.auditTrailService = auditTrailService;
+        this.constantRepository = constantRepository;
     }
 
-    public Boolean createLocation(LocationDTO lDto, CommonDTO dto, UserPrincipal user) throws IOException {
-        Users actor = new Users(user.getId());
+    public Boolean createLocation(LocationDTO lDto, CommonDTO dto, UserPrincipal user) {
         Set<LabLocation> lab = new HashSet<>();
         Location l = new Location(null, lDto.getLocation(),lab,new Date(),
-                new Date(),actor,actor);
+                new Date(),new Users(user.getId()),new Users(user.getId()));
         if (l.getLab() != null) {
             for (String lab1 : lDto.getLab()) {
                 lab.add(new LabLocation(null,lab1,l));
@@ -51,17 +50,45 @@ public class LocationService {
         return true;
     }
 
-//    public LocationDTO populateLocation(Users user) {
-//        UsersDTO userDto = new UsersDTO();
-//        userDto.setId(user.getId().toString());
-//        userDto.setName(user.getName());
-//        userDto.setEmail(user.getEmail());
-//        userDto.setRole(user.getRole());
-//        userDto.setActiveFlag(user.getActiveFlag());
-//        Constant c = constantRepository.findByConstant("DateFormat");
-//        userDto.setCreatedTime(CommonUtls.datetoString(user.getCreatedTime(),c.getConstantValue()));
-//        userDto.setUpdatedTime(CommonUtls.datetoString(user.getUpdatedTime(),c.getConstantValue()));
-//        return userDto;
-//    }
+    public LocationDTO populateLocation(Location l) {
+        LocationDTO locationDto = new LocationDTO();
+        locationDto.setId(l.getId().toString());
+        locationDto.setLocation(l.getLocation());
+        List<String> lab = new ArrayList<>();
+        for (LabLocation labs : l.getLab()) {
+            lab.add(labs.getLab());
+        }
+        locationDto.setLab(lab);
+        Constant c = constantRepository.findByConstant("DateFormat");
+        locationDto.setCreatedTime(CommonUtls.datetoString(l.getCreatedTime(),c.getConstantValue()));
+        locationDto.setUpdatedTime(CommonUtls.datetoString(l.getUpdatedTime(),c.getConstantValue()));
+        return locationDto;
+    }
+
+    @SuppressWarnings("unchecked")
+    public JSONObject filteredLocation(String pageNo, String location) {
+        JSONObject json = new JSONObject();
+        Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
+        List<LocationDTO> list;
+        Page<Location> lList;
+        if (!CommonUtls.isCompletlyEmpty(location)) {
+            lList = locationRepository.findAllByLocationOrderByCreatedTimeDesc(location, pageable);
+        } else {
+            lList = locationRepository.findAllByOrderByCreatedTimeDesc(pageable);
+        }
+        list = lList.stream().map(this::populateLocation).collect(Collectors.toList());
+        json.put("commonListDto", list);
+        json.put("totalElements", lList.getTotalElements());
+        return json;
+    }
+
+    public LocationDTO findById(Long id) {
+        LocationDTO lDTO = null;
+        Optional<Location> isLocation = locationRepository.findById(id);
+        if (isLocation.isPresent()) {
+            lDTO = populateLocation(isLocation.get());
+        }
+        return lDTO;
+    }
 
 }

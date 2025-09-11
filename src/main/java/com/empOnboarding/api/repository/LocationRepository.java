@@ -7,4 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.empOnboarding.api.entity.Groups;
 
-public interface LocationRepository extends JpaRepository<Location, Long> {}
+public interface LocationRepository extends JpaRepository<Location, Long> {
+
+    Page<Location> findAllByLocationOrderByCreatedTimeDesc(String location, Pageable pageable);
+
+    Page<Location> findAllByOrderByCreatedTimeDesc(Pageable pageable);
+}
