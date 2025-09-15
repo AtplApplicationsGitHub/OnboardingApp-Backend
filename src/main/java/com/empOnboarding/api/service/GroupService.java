@@ -102,7 +102,9 @@ public class GroupService {
 			Groups g = gOpt.get();
 			g.setName(gDto.getName());
 			g.setPgLead(new Users(Long.valueOf(gDto.getPgLead())));
-			g.setEgLead(new Users(Long.valueOf(gDto.getEgLead())));
+			if(!CommonUtls.isCompletlyEmpty(gDto.getEgLead())) {
+				g.setEgLead(new Users(Long.valueOf(gDto.getEgLead())));
+			}
 			g.setUpdatedTime(new Date());
 			g.setUpdatedBy(new Users(userp.getId()));
 			groupRepository.save(g);

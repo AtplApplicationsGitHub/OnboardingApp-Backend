@@ -270,6 +270,14 @@ public class TaskService {
         return result;
     }
 
+    LocalDate dueDate(LocalDate doj, int complianceDay, String period) {
+        return "after".equalsIgnoreCase(period) ? doj.plusDays(complianceDay) : doj.minusDays(complianceDay);
+    }
+
+    boolean isCompleted(TaskQuestions tq) {
+        return "completed".equalsIgnoreCase(String.valueOf(tq.getStatus()).trim());
+    }
+
     public boolean taskQuestionAnswer(Long qId, String response){
         TaskQuestions tq = taskQuestionRepository.getReferenceById(qId);
         tq.setResponse(response);
@@ -280,6 +288,103 @@ public class TaskService {
 
     public long taskCountForAdmin(){
         return taskRepository.count();
+    }
+
+    public JSONObject taskCountForGL(UserPrincipal user) {
+        JSONObject json = new JSONObject();
+        LocalDate today = LocalDate.now();
+
+        List<Task> tasks = taskRepository.findAllByAssignedToId(user.getId());
+
+        long distinctEmployeeCount = tasks.stream()
+                .map(Task::getEmployeeId)                 // If this returns Employee, use .map(t -> t.getEmployeeId().getId())
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+
+        long fullyCompletedTaskCount = tasks.stream()
+                .filter(t -> t.getTaskQuestions() != null && !t.getTaskQuestions().isEmpty())
+                .filter(t -> t.getTaskQuestions().stream()
+                        .allMatch(tq -> "completed".equalsIgnoreCase(String.valueOf(tq.getStatus()).trim()))
+                )
+                .count();
+
+        long overdueTaskCount = tasks.stream()
+                .filter(t -> t.getTaskQuestions() != null && !t.getTaskQuestions().isEmpty())
+                .filter(t -> {
+                    LocalDate doj = extractDoj(t);
+                    if (doj == null) return false;
+
+                    List<TaskQuestions> incomplete = t.getTaskQuestions().stream()
+                            .filter(q -> !isCompleted(q))
+                            .toList();
+
+                    if (incomplete.isEmpty()) return false;
+
+                    return incomplete.stream()
+                            .map(q -> computeDue(doj, q))
+                            .allMatch(due -> due != null && due.isBefore(today));
+                })
+                .count();
+
+        long pendingTaskCount = tasks.stream()
+                .filter(t -> t.getTaskQuestions() != null && !t.getTaskQuestions().isEmpty())
+                .filter(t -> {
+                    LocalDate doj = extractDoj(t);
+                    if (doj == null) return false;
+
+                    List<TaskQuestions> incomplete = t.getTaskQuestions().stream()
+                            .filter(q -> !isCompleted(q))
+                            .toList();
+
+                    if (incomplete.isEmpty()) return false;
+                    return incomplete.stream()
+                            .map(q -> computeDue(doj, q))
+                            .anyMatch(due -> due == null || !due.isBefore(today)); // null or due >= today
+                })
+                .count();
+
+        json.put("totalEmployees", distinctEmployeeCount);
+        json.put("totalCompletedTasks", fullyCompletedTaskCount);
+        json.put("totalPendingTasks", pendingTaskCount);
+        json.put("overdueTasks", overdueTaskCount);
+        return json;
+    }
+
+    private static LocalDate computeDue(LocalDate doj, TaskQuestions tq) {
+        if (tq == null || tq.getQuestionId() == null || doj == null) return null;
+        Questions q = tq.getQuestionId();
+
+        Integer days = parsePositiveIntOrNull(q.getComplainceDay());
+        if (days == null) return null;
+
+        String period = String.valueOf(q.getPeriod()).trim();
+        if ("after".equalsIgnoreCase(period)) {
+            return doj.plusDays(days);
+        } else {
+            return doj.minusDays(days);
+        }
+    }
+
+    private static Integer parsePositiveIntOrNull(String s) {
+        if (s == null) return null;
+        String trimmed = s.trim();
+        if (!trimmed.matches("\\d+")) return null;
+        int v = Integer.parseInt(trimmed);
+        return v >= 0 ? v : null;
+    }
+
+    private static LocalDate extractDoj(Task t) {
+        if (t == null || t.getEmployeeId() == null) return null;
+        try {
+            return t.getEmployeeId().getDate();
+        } catch (Exception ignored) {}
+        try {
+            LocalDate d = t.getEmployeeId().getDate();
+            if (d != null) return d;
+        } catch (Exception ignored) {}
+
+        return null;
     }
 
 }
