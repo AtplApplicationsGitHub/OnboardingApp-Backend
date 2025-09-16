@@ -1,8 +1,11 @@
 package com.empOnboarding.api.service;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.empOnboarding.api.dto.DropDownDTO;
+import com.empOnboarding.api.dto.GroupsDTO;
 import com.empOnboarding.api.dto.LocationDTO;
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.LocationRepository;
@@ -27,11 +30,14 @@ public class LocationService {
 
     private final ConstantRepository constantRepository;
 
+    private final MailerService mailerService;
+
     public LocationService(LocationRepository locationRepository,AuditTrailService auditTrailService,
-                           ConstantRepository constantRepository){
+                           ConstantRepository constantRepository,MailerService mailerService){
         this.locationRepository = locationRepository;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
+        this.mailerService = mailerService;
     }
 
     public Boolean createLocation(LocationDTO lDto, CommonDTO dto, UserPrincipal user) {
@@ -89,6 +95,15 @@ public class LocationService {
             lDTO = populateLocation(isLocation.get());
         }
         return lDTO;
+    }
+
+    public List<String> location(String location) {
+        List<Location> locationGet = locationRepository.findAllByLocation(location);
+        List<String> dto = locationGet.stream()
+                .flatMap(loc -> loc.getLab().stream())
+                .map(LabLocation::getLab)
+                .collect(Collectors.toList());
+        return dto;
     }
 
 }

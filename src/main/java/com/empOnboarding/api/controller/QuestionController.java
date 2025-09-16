@@ -1,6 +1,8 @@
 package com.empOnboarding.api.controller;
 
 import javax.servlet.http.HttpServletRequest;
+
+import com.empOnboarding.api.dto.DropDownDTO;
 import org.json.simple.JSONObject;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,6 +19,8 @@ import com.empOnboarding.api.security.CurrentUser;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.service.QuestionService;
 import com.empOnboarding.api.utils.Constants;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/question")
@@ -73,6 +77,11 @@ public class QuestionController {
 	@GetMapping("/countQuestionsByGroup/{id}")
 	public long countQuestionsByGroup(@PathVariable Long id) {
 		return questionService.countQuestionsByGroup(id);
+	}
+
+	@GetMapping("/getGroups/{level}")
+	public List<DropDownDTO> getGroups(@PathVariable String level){
+		return questionService.getGroups(level);
 	}
 
 }

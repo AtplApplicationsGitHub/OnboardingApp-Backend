@@ -35,9 +35,11 @@ public class TaskService {
 
     private final EmployeeFeedbackRepository employeeFeedbackRepository;
 
+    private final EmployeeRepository employeeRepository;
 
     public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository,UsersRepository usersRepository, QuestionRepository questionRepository,
-                       ConstantRepository constantRepository,GroupRepository groupRepository, EmployeeFeedbackRepository employeeFeedbackRepository) {
+                       ConstantRepository constantRepository,GroupRepository groupRepository,
+                       EmployeeFeedbackRepository employeeFeedbackRepository,EmployeeRepository employeeRepository) {
         this.taskRepository = taskRepository;
         this.usersRepository = usersRepository;
         this.questionRepository = questionRepository;
@@ -45,6 +47,7 @@ public class TaskService {
         this.groupRepository = groupRepository;
         this.taskQuestionRepository = taskQuestionRepository;
         this.employeeFeedbackRepository = employeeFeedbackRepository;
+        this.employeeRepository = employeeRepository;
     }
 
     @Transactional
@@ -58,7 +61,7 @@ public class TaskService {
             Date now = new Date();
             byGroup.forEach((groupId, questionsList) -> {
                 Groups g = groupRepository.getReferenceById(groupId);
-                if (questionsList == null || questionsList.isEmpty()) return;
+                if (questionsList == null || questionsList.isEmpty() || g.getAutoAssign().equalsIgnoreCase("No")) return;
                 Task task = new Task();
                 task.setId(nextId());
                 task.setEmployeeId(emp);
@@ -385,6 +388,39 @@ public class TaskService {
         } catch (Exception ignored) {}
 
         return null;
+    }
+
+    public void createTaskManual(long employeeId, List<Long> groupIds, UserPrincipal user){
+        Employee e = employeeRepository.getReferenceById(employeeId);
+        Users actor = usersRepository.getReferenceById(user.getId());
+        Date now = new Date();
+        for(Long group:groupIds){
+            List<Questions> questions = questionRepository.findByGroupIdId(group);
+            Groups g = groupRepository.getReferenceById(group);
+            if (questions == null || questions.isEmpty()) return;
+            Task task = new Task();
+            task.setId(nextId());
+            task.setEmployeeId(e);
+            task.setGroupId(g);
+            task.setCreatedBy(actor);
+            task.setUpdatedBy(actor);
+            task.setCreatedTime(now);
+            task.setUpdatedTime(now);
+            task.setFreezeTask("N");
+            Users lead = g.getPgLead();
+            task.setAssignedTo(lead != null ? lead : actor);
+            for (Questions qn : questions) {
+                TaskQuestions tq = new TaskQuestions();
+                tq.setTaskId(task);
+                tq.setQuestionId(qn);
+                if(qn.getDefaultFlag().equalsIgnoreCase("yes")){
+                    tq.setResponse("YES");
+                    tq.setStatus("completed");
+                }
+                task.getTaskQuestions().add(tq);
+            }
+            taskRepository.save(task);
+        }
     }
 
 }

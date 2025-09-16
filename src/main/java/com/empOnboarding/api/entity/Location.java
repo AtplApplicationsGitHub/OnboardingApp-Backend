@@ -39,7 +39,7 @@ public class Location implements java.io.Serializable {
 	@Column(name = "id", unique = true, nullable = false)
 	private Long id;
 	
-	@Column(name = "location")
+	@Column(name = "department")
 	private String location;
 	
 	@OneToMany(fetch = FetchType.LAZY, mappedBy = "location", cascade = CascadeType.ALL, orphanRemoval = true)

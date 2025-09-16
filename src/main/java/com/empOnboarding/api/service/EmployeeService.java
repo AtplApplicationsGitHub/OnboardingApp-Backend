@@ -7,8 +7,7 @@ import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import com.empOnboarding.api.dto.EmployeeFeedbackDTO;
-import com.empOnboarding.api.dto.PdfDTO;
+import com.empOnboarding.api.dto.*;
 
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.*;
@@ -24,8 +23,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import com.empOnboarding.api.dto.CommonDTO;
-import com.empOnboarding.api.dto.EmployeeDTO;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
 import com.empOnboarding.api.utils.Constants;
@@ -657,6 +654,12 @@ public class EmployeeService {
     public String getConstant(String con) {
         Constant constant = constantRepository.findByConstant(con);
         return constant.getConstantValue();
+    }
+
+    public Boolean createTaskForEmployee(List<Long> group, Long id, UserPrincipal user){
+        boolean result = false;
+        taskService.createTaskManual(id,group,user);
+        return result;
     }
 
 }

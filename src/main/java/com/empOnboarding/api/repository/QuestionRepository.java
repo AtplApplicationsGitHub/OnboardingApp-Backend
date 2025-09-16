@@ -29,4 +29,8 @@ public interface QuestionRepository extends JpaRepository<Questions, Long> {
 	long countByGroupIdId(Long id);
 
 	List<Questions> findAllByGroupIdId(Long groupId);
+
+    List<Questions> findAllByQuestionLevelsLevel(String level);
+
+    List<Questions> findByGroupIdId(Long group);
 }

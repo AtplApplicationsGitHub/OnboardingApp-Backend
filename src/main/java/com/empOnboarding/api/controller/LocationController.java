@@ -1,6 +1,7 @@
 package com.empOnboarding.api.controller;
 
 import com.empOnboarding.api.dto.CommonDTO;
+import com.empOnboarding.api.dto.DropDownDTO;
 import com.empOnboarding.api.dto.LocationDTO;
 import com.empOnboarding.api.security.CurrentUser;
 import com.empOnboarding.api.security.UserPrincipal;
@@ -10,6 +11,7 @@ import org.json.simple.JSONObject;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/location")
@@ -43,6 +45,11 @@ public class LocationController {
     @GetMapping("/findById/{id}")
     public LocationDTO findDataById(@PathVariable Long id) {
         return locationService.findById(id);
+    }
+
+    @GetMapping("/findByDepartment/{department}")
+    public List<String> findByDepartment(@PathVariable String department){
+        return locationService.location(department);
     }
 
 
