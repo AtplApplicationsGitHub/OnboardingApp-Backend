@@ -59,7 +59,8 @@ public class GroupService {
 	
 	public Boolean createGroup(GroupsDTO groupDto, CommonDTO dto, UserPrincipal user) throws IOException {
 		Users egLead = !CommonUtls.isCompletlyEmpty(groupDto.getEgLead())? new Users(Long.valueOf(groupDto.getEgLead())) : null;
-		Groups group = new Groups(null, groupDto.getName(),new Users(Long.valueOf(groupDto.getPgLead())),egLead,new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
+		Groups group = new Groups(null, groupDto.getName(),new Users(Long.valueOf(groupDto.getPgLead())),
+				egLead,groupDto.getAutoAssign(),new Date(),new Date(),new Users(user.getId()),new Users(user.getId()));
 		groupRepository.save(group);
 		dto.setSystemRemarks(group.toString());
 		dto.setModuleId(group.getName());
@@ -75,6 +76,7 @@ public class GroupService {
 		gDto.setName(group.getName());
 		gDto.setPgLead(group.getPgLead().getName());
 		gDto.setEgLead(group.getEgLead()!=null?group.getEgLead().getName():"-");
+		gDto.setAutoAssign(group.getAutoAssign());
 		gDto.setQuesCount(quesCount);
 		if(quesCount==0L) {
 			gDto.setDeleteFlag(true);
@@ -102,7 +104,10 @@ public class GroupService {
 			Groups g = gOpt.get();
 			g.setName(gDto.getName());
 			g.setPgLead(new Users(Long.valueOf(gDto.getPgLead())));
-			g.setEgLead(new Users(Long.valueOf(gDto.getEgLead())));
+			if(!CommonUtls.isCompletlyEmpty(gDto.getEgLead())) {
+				g.setEgLead(new Users(Long.valueOf(gDto.getEgLead())));
+			}
+			g.setAutoAssign(g.getAutoAssign());
 			g.setUpdatedTime(new Date());
 			g.setUpdatedBy(new Users(userp.getId()));
 			groupRepository.save(g);
@@ -158,6 +163,7 @@ public class GroupService {
 		group.setName(g.getName());
 		group.setPgLead(g.getPgLead());
 		if (groupDto.getEgLead() != null) group.setEgLead(g.getEgLead());
+		group.setAutoAssign(g.getAutoAssign());
 		group.setCreatedTime(now);
 		group.setUpdatedTime(now);
 		group.setCreatedBy(actor);

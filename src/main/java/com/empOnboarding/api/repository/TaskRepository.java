@@ -11,11 +11,15 @@ import com.empOnboarding.api.entity.Groups;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface TaskRepository extends JpaRepository<Task, String> {
 
     Task findTopByIdStartingWithOrderByIdDesc(String prefix);
 
     Page<Task> findAllByAssignedToIdOrderByCreatedTimeDesc(Long id,Pageable pageable);
+
+    List<Task> findAllByAssignedToId(Long id);
 
     @Query(
             value = """

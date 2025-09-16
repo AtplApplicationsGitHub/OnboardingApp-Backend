@@ -44,6 +44,9 @@ public class Groups implements java.io.Serializable {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "escalation_group_lead", referencedColumnName = "id", nullable = true)
 	private Users egLead;
+
+	@Column(name = "auto_assign")
+	private String autoAssign;
 	
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "updated_time", nullable = true, length = 19)

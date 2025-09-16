@@ -63,4 +63,9 @@ public class TaskController {
         return taskService.taskCountForAdmin();
     }
 
+    @GetMapping("/taskCountForGL")
+    public JSONObject taskCountForGL(@CurrentUser UserPrincipal user) {
+        return taskService.taskCountForGL(user);
+    }
+
 }

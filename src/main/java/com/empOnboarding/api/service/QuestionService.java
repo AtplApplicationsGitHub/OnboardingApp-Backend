@@ -3,6 +3,7 @@ package com.empOnboarding.api.service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.empOnboarding.api.dto.DropDownDTO;
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.LookupItemsRepository;
 import org.json.simple.JSONObject;
@@ -150,6 +151,14 @@ public class QuestionService {
 	
 	public long countQuestionsByGroup(Long id) {
 		return questionRepository.countByGroupIdId(id);
+	}
+
+	public List<DropDownDTO> getGroups(String level){
+		List<DropDownDTO> dto;
+		List<Questions> q = questionRepository.findAllByQuestionLevelsLevel(level);
+		dto = q.stream().map(Questions::getGroupId).filter(Objects::nonNull)
+				.distinct().map(g -> new DropDownDTO(g.getId(),g.getName())).toList();
+		return dto;
 	}
 
 }
