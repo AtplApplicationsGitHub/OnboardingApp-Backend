@@ -248,4 +248,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     Boolean existsByEmployeeId(Employee emp);
 
     Page<Task> findAllByEmployeeIdIdOrderByCreatedTimeDesc(Long eId, Pageable pageable);
+
+    List<Task> findAllByEmployeeIdId(Long eId);
+
 }

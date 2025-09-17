@@ -1,7 +1,6 @@
 package com.empOnboarding.api.controller;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import com.empOnboarding.api.dto.EmployeeFeedbackDTO;
 import com.empOnboarding.api.dto.PdfDTO;
@@ -23,6 +22,7 @@ import com.empOnboarding.api.utils.Constants;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/employee")
@@ -36,9 +36,10 @@ public class EmployeeController {
 	}
 	
 	@PostMapping("/saveEmployee")
-	public boolean saveGroup(@RequestBody EmployeeDTO eDto, CommonDTO dto,
+	public boolean saveGroup(@RequestBody EmployeeDTO eDto,
 			HttpServletRequest request, @CurrentUser UserPrincipal user) {
 		try {
+			CommonDTO dto = new CommonDTO();
 			dto.setIpAddress(request.getRemoteAddr());
 			dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
 			dto.setModule(Constants.EMPLOYEE);
@@ -110,10 +111,6 @@ public class EmployeeController {
 		}
 	}
 
-	@PostMapping("/labSave/{lab}/{empId}")
-	public Boolean labSave(@PathVariable String lab,@PathVariable Long empId) throws Exception {
-		return employeeService.labSave(lab,empId);
-	}
 
 	@PostMapping("saveFeedBack/{star}/{feedback}/{taskId}")
 	public Boolean saveFeedBack(@PathVariable String star,@PathVariable String feedback,
@@ -134,6 +131,39 @@ public class EmployeeController {
 	@GetMapping("getConstant/{constant}")
 	public String getConstString(@PathVariable String constant){
 		return employeeService.getConstant(constant);
+	}
+
+	@PostMapping("/labSave/{lab}/{empId}")
+	public Boolean labSave(@PathVariable String lab,@PathVariable Long empId,HttpServletRequest request,
+						   @CurrentUser UserPrincipal user){
+		CommonDTO dto = new CommonDTO();
+		dto.setLoginUserId(user.getId());
+		dto.setIpAddress(request.getRemoteAddr());
+		dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+		dto.setModule(Constants.EMPLOYEE);
+		return employeeService.labSave(lab,empId,dto);
+	}
+
+	@DeleteMapping("deleteQues/{id}/{remarks}")
+	public Boolean deleteQues(@PathVariable Long id,@PathVariable String remarks,HttpServletRequest request,
+							  @CurrentUser UserPrincipal user){
+		CommonDTO dto = new CommonDTO();
+		dto.setLoginUserId(user.getId());
+		dto.setIpAddress(request.getRemoteAddr());
+		dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+		dto.setModule(Constants.QUESTIONS);
+		return employeeService.empQuestionDelete(id,dto,remarks);
+	}
+
+	@PostMapping("createTaskForEmployee/{id}")
+	public Boolean createTaskForEmployee(@RequestBody List<Long> gid, @PathVariable Long id, HttpServletRequest request,
+										 @CurrentUser UserPrincipal user){
+		CommonDTO dto = new CommonDTO();
+		dto.setLoginUserId(user.getId());
+		dto.setIpAddress(request.getRemoteAddr());
+		dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+		dto.setModule(Constants.QUESTIONS);
+		return employeeService.createTaskForEmployee(gid,id,user,dto);
 	}
 
 }

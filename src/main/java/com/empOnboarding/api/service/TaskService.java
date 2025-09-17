@@ -390,7 +390,7 @@ public class TaskService {
         return null;
     }
 
-    public void createTaskManual(long employeeId, List<Long> groupIds, UserPrincipal user){
+    public void createTaskManual(long employeeId, List<Long> groupIds, UserPrincipal user,CommonDTO dto){
         Employee e = employeeRepository.getReferenceById(employeeId);
         Users actor = usersRepository.getReferenceById(user.getId());
         Date now = new Date();

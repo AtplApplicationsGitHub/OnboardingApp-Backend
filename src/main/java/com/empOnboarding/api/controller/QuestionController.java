@@ -79,9 +79,9 @@ public class QuestionController {
 		return questionService.countQuestionsByGroup(id);
 	}
 
-	@GetMapping("/getGroups/{level}")
-	public List<DropDownDTO> getGroups(@PathVariable String level){
-		return questionService.getGroups(level);
+	@GetMapping("/getGroups/{level}/{id}")
+	public List<DropDownDTO> getGroups(@PathVariable String level,@PathVariable Long id){
+		return questionService.getGroups(level,id);
 	}
 
 }

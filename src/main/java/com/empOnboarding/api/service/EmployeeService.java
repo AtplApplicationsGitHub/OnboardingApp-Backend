@@ -49,11 +49,14 @@ public class EmployeeService {
 
     private final LookupItemsRepository lookupItemsRepository;
 
+    private final TaskQuestionRepository taskQuestionRepository;
+
 
     public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
                            ConstantRepository constantRepository,EmployeeQuestionService employeeQuestionService,
                            MailerService mailerService, TaskService taskService, TaskRepository taskRepository,
-                           EmployeeFeedbackRepository employeeFeedbackRepository, LookupItemsRepository lookupItemsRepository) {
+                           EmployeeFeedbackRepository employeeFeedbackRepository, LookupItemsRepository lookupItemsRepository,
+                           TaskQuestionRepository taskQuestionRepository) {
         this.employeeRepositrory = employeeRepositrory;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
@@ -63,6 +66,7 @@ public class EmployeeService {
         this.taskRepository = taskRepository;
         this.employeeFeedbackRepository = employeeFeedbackRepository;
         this.lookupItemsRepository = lookupItemsRepository;
+        this.taskQuestionRepository = taskQuestionRepository;
     }
 
     public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user) {
@@ -609,12 +613,22 @@ public class EmployeeService {
         }
     }
 
-    public Boolean labSave(String lab, Long empId) {
-        Employee e = employeeRepositrory.getReferenceById(empId);
-        e.setLabAllocation(lab);
-        e.setUpdatedTime(new Date());
-        employeeRepositrory.save(e);
-        return true;
+    public Boolean labSave(String lab, Long empId,CommonDTO dto) {
+        try{
+            Employee e = employeeRepositrory.getReferenceById(empId);
+            String oldValue = e.getLabAllocation();
+            e.setLabAllocation(lab);
+            e.setUpdatedTime(new Date());
+            employeeRepositrory.save(e);
+            dto.setModuleId("NA");
+            dto.setModule(Constants.EMPLOYEE);
+            dto.setSystemRemarks(CommonUtls.getDiffForString("Lab", oldValue, lab));
+            auditTrailService.saveAuditTrail(Constants.DATA_UPDATE.getValue(), dto);
+            return true;
+        }catch(Exception e){
+           mailerService.sendEmailOnException(e);
+        }
+        return false;
     }
 
     public Boolean saveEmployeeFeedback(String star, String feedback, String taskId,Long id){
@@ -656,10 +670,30 @@ public class EmployeeService {
         return constant.getConstantValue();
     }
 
-    public Boolean createTaskForEmployee(List<Long> group, Long id, UserPrincipal user){
+    public Boolean createTaskForEmployee(List<Long> group, Long id, UserPrincipal user,CommonDTO dto){
         boolean result = false;
-        taskService.createTaskManual(id,group,user);
+        taskService.createTaskManual(id,group,user,dto);
         return result;
     }
+
+    public Boolean empQuestionDelete(Long id, CommonDTO dto, String remarks) {
+        try {
+            taskQuestionRepository.deleteById(id);
+            dto.setModuleId("NA");
+            dto.setSystemRemarks(Constants.QUESTION_DELETE.getValue());
+            dto.setUserRemarks(remarks);
+            auditTrailService.saveAuditTrail(Constants.DATA_DELETE.getValue(), dto);
+            return true;
+        } catch (Exception e) {
+            mailerService.sendEmailOnException(e);
+        }
+        return false;
+    }
+
+
+    public Boolean ArchiveEmployee(){
+        return false;
+    }
+
 
 }
