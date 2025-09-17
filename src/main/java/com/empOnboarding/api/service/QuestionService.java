@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import com.empOnboarding.api.dto.DropDownDTO;
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.LookupItemsRepository;
+import com.empOnboarding.api.repository.TaskRepository;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -32,15 +33,19 @@ public class QuestionService {
 	private final MailerService mailerService;
 
 	private final LookupItemsRepository lookupItemsRepository;
+
+	private final TaskRepository taskRepository;
 	
 	
 	public QuestionService(QuestionRepository questionRepository,AuditTrailService auditTrailService,
-			ConstantRepository constantRepository, MailerService mailerService,LookupItemsRepository lookupItemsRepository) {
+			ConstantRepository constantRepository, MailerService mailerService,LookupItemsRepository lookupItemsRepository,
+						   TaskRepository taskRepository) {
 		this.questionRepository = questionRepository;
 		this.auditTrailService = auditTrailService;
 		this.constantRepository = constantRepository;
 		this.mailerService = mailerService;
 		this.lookupItemsRepository = lookupItemsRepository;
+		this.taskRepository = taskRepository;
 	}
 	
 	public Boolean createQuestion(QuestionsDTO qDto, CommonDTO dto, UserPrincipal user) {
@@ -153,10 +158,22 @@ public class QuestionService {
 		return questionRepository.countByGroupIdId(id);
 	}
 
-	public List<DropDownDTO> getGroups(String level){
+	public List<DropDownDTO> getGroups(String level, Long empId){
 		List<DropDownDTO> dto;
+		List<Task> t = taskRepository.findAllByEmployeeIdId(empId);
 		List<Questions> q = questionRepository.findAllByQuestionLevelsLevel(level);
-		dto = q.stream().map(Questions::getGroupId).filter(Objects::nonNull)
+		List<String> assignedGroups = t.stream()
+				.flatMap(task -> task.getTaskQuestions().stream())
+				.map(tq -> tq.getQuestionId().getGroupId())
+				.filter(Objects::nonNull)
+				.map(Groups::getName)
+				.filter(Objects::nonNull)
+				.distinct()
+				.toList();
+		dto = q.stream().map(Questions::getGroupId)
+				.filter(Objects::nonNull)
+				.filter(g -> "No".equalsIgnoreCase(g.getAutoAssign()))
+				.filter(g -> !assignedGroups.contains(g.getName()))
 				.distinct().map(g -> new DropDownDTO(g.getId(),g.getName())).toList();
 		return dto;
 	}
