@@ -163,19 +163,21 @@ public class QuestionService {
 		try{
 			List<Task> t = taskRepository.findAllByEmployeeIdId(empId);
 			List<Questions> q = questionRepository.findAllByQuestionLevelsLevel(level);
-			List<String> assignedGroups = t.stream()
-					.flatMap(task -> task.getTaskQuestions().stream())
-					.map(tq -> tq.getQuestionId().getGroupId())
-					.filter(Objects::nonNull)
-					.map(Groups::getName)
-					.filter(Objects::nonNull)
-					.distinct()
-					.toList();
-			dto = q.stream().map(Questions::getGroupId)
-					.filter(Objects::nonNull)
-					.filter(g -> "No".equalsIgnoreCase(g.getAutoAssign()))
-					.filter(g -> !assignedGroups.contains(g.getName()))
-					.distinct().map(g -> new DropDownDTO(g.getId(),g.getName())).toList();
+			if(!q.isEmpty()){
+				List<String> assignedGroups = t.stream()
+						.flatMap(task -> task.getTaskQuestions().stream())
+						.map(tq -> tq.getQuestionId().getGroupId())
+						.filter(Objects::nonNull)
+						.map(Groups::getName)
+						.filter(Objects::nonNull)
+						.distinct()
+						.toList();
+				dto = q.stream().map(Questions::getGroupId)
+						.filter(Objects::nonNull)
+						.filter(g -> "No".equalsIgnoreCase(g.getAutoAssign()))
+						.filter(g -> !assignedGroups.contains(g.getName()))
+						.distinct().map(g -> new DropDownDTO(g.getId(),g.getName())).toList();
+			}
 		}catch(Exception e){
 			mailerService.sendEmailOnException(e);
 		}
