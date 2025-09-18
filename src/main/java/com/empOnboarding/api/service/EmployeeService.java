@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
 import com.empOnboarding.api.utils.Constants;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -693,27 +694,65 @@ public class EmployeeService {
         return false;
     }
 
-    public Boolean deleteEmployee(Long id,CommonDTO dto){
+//    public Boolean deleteEmployee(Long id,CommonDTO dto){
+//        try {
+//            List<Task> t = taskRepository.findAllByEmployeeIdId(id);
+//            List<String> tId = t.stream().map(Task::getId).collect(Collectors.toList());
+//            List<Long> tqId = t.stream()
+//                    .flatMap(m -> m.getTaskQuestions().stream())
+//                    .map(TaskQuestions::getId)
+//                    .collect(Collectors.toList());
+//            taskQuestionRepository.deleteAllById(tqId);
+//            taskRepository.deleteAllById(tId);
+//            employeeFeedbackRepository.deleteAllByEmployeeIdId(id);
+//            employeeQuestionRepository.deleteAllByEmployeeIdId(id);
+//            employeeRepositrory.deleteById(id);
+//            dto.setModuleId("NA");
+//            dto.setSystemRemarks(Constants.EMPLOYEE_DELETE.getValue());
+//            auditTrailService.saveAuditTrail(Constants.DATA_DELETE.getValue(), dto);
+//            return true;
+//        } catch (Exception e) {
+//            mailerService.sendEmailOnException(e);
+//        }
+//        return false;
+//    }
+
+    @Transactional(
+            propagation = Propagation.REQUIRED,
+            rollbackFor = Exception.class
+    )
+    public Boolean deleteEmployee(Long id, CommonDTO dto) {
         try {
-            List<Task> t = taskRepository.findAllByEmployeeIdId(id);
-            List<String> tId = t.stream().map(Task::getId).collect(Collectors.toList());
-            List<Long> tqId = t.stream()
-                    .flatMap(m -> m.getTaskQuestions().stream())
+            List<Task> tasks = taskRepository.findAllByEmployeeIdId(id);
+            List<String> taskIds = tasks.stream()
+                    .map(Task::getId)
+                    .filter(Objects::nonNull)
+                    .toList();
+            List<Long> taskQuestionIds = tasks.stream()
+                    .flatMap(t -> t.getTaskQuestions().stream())
                     .map(TaskQuestions::getId)
-                    .collect(Collectors.toList());
-            taskQuestionRepository.deleteAllById(tqId);
-            taskRepository.deleteAllById(tId);
+                    .filter(Objects::nonNull)
+                    .toList();
+            if (!taskQuestionIds.isEmpty()) {
+                taskQuestionRepository.deleteAllByIdInBatch(taskQuestionIds);
+            }
             employeeFeedbackRepository.deleteAllByEmployeeIdId(id);
             employeeQuestionRepository.deleteAllByEmployeeIdId(id);
+
+            if (!taskIds.isEmpty()) {
+                taskRepository.deleteAllByIdInBatch(taskIds);
+            }
             employeeRepositrory.deleteById(id);
             dto.setModuleId("NA");
             dto.setSystemRemarks(Constants.EMPLOYEE_DELETE.getValue());
             auditTrailService.saveAuditTrail(Constants.DATA_DELETE.getValue(), dto);
+
             return true;
         } catch (Exception e) {
             mailerService.sendEmailOnException(e);
+            // Let the tx roll back
+            throw e;
         }
-        return false;
     }
 
     public Boolean ArchiveEmployee(){
