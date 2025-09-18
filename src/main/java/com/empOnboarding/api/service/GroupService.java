@@ -107,7 +107,7 @@ public class GroupService {
 			if(!CommonUtls.isCompletlyEmpty(gDto.getEgLead())) {
 				g.setEgLead(new Users(Long.valueOf(gDto.getEgLead())));
 			}
-			g.setAutoAssign(g.getAutoAssign());
+			g.setAutoAssign(gDto.getAutoAssign());
 			g.setUpdatedTime(new Date());
 			g.setUpdatedBy(new Users(userp.getId()));
 			groupRepository.save(g);

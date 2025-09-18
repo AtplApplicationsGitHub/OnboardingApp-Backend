@@ -166,4 +166,14 @@ public class EmployeeController {
 		return employeeService.createTaskForEmployee(gid,id,user,dto);
 	}
 
+
+	@DeleteMapping("deleteEmployeeMappings/{id}")
+	public Boolean deleteEmployee(@PathVariable Long id, HttpServletRequest request, UserPrincipal user){
+		CommonDTO dto = new CommonDTO();
+		dto.setLoginUserId(user.getId());
+		dto.setIpAddress(request.getRemoteAddr());
+		dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+		dto.setModule(Constants.EMPLOYEE);
+		return employeeService.deleteEmployee(id,dto);
+	}
 }

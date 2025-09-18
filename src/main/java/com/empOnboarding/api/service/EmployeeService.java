@@ -51,12 +51,14 @@ public class EmployeeService {
 
     private final TaskQuestionRepository taskQuestionRepository;
 
+    private final EmployeeQuestionRepository employeeQuestionRepository;
+
 
     public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
                            ConstantRepository constantRepository,EmployeeQuestionService employeeQuestionService,
                            MailerService mailerService, TaskService taskService, TaskRepository taskRepository,
                            EmployeeFeedbackRepository employeeFeedbackRepository, LookupItemsRepository lookupItemsRepository,
-                           TaskQuestionRepository taskQuestionRepository) {
+                           TaskQuestionRepository taskQuestionRepository,EmployeeQuestionRepository employeeQuestionRepository) {
         this.employeeRepositrory = employeeRepositrory;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
@@ -67,6 +69,7 @@ public class EmployeeService {
         this.employeeFeedbackRepository = employeeFeedbackRepository;
         this.lookupItemsRepository = lookupItemsRepository;
         this.taskQuestionRepository = taskQuestionRepository;
+        this.employeeQuestionRepository = employeeQuestionRepository;
     }
 
     public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user) {
@@ -176,7 +179,7 @@ public class EmployeeService {
         return e;
     }
 
-    public void deleteEmployee(Long id, CommonDTO dto) {
+    public void deleteEmployeeMappings(Long id, CommonDTO dto) {
         try {
             employeeRepositrory.deleteById(id);
             dto.setModuleId("NA");
@@ -690,6 +693,28 @@ public class EmployeeService {
         return false;
     }
 
+    public Boolean deleteEmployee(Long id,CommonDTO dto){
+        try {
+            List<Task> t = taskRepository.findAllByEmployeeIdId(id);
+            List<String> tId = t.stream().map(Task::getId).collect(Collectors.toList());
+            List<Long> tqId = t.stream()
+                    .flatMap(m -> m.getTaskQuestions().stream())
+                    .map(TaskQuestions::getId)
+                    .collect(Collectors.toList());
+            taskQuestionRepository.deleteAllById(tqId);
+            taskRepository.deleteAllById(tId);
+            employeeFeedbackRepository.deleteAllByEmployeeIdId(id);
+            employeeQuestionRepository.deleteAllByEmployeeIdId(id);
+            employeeRepositrory.deleteById(id);
+            dto.setModuleId("NA");
+            dto.setSystemRemarks(Constants.EMPLOYEE_DELETE.getValue());
+            auditTrailService.saveAuditTrail(Constants.DATA_DELETE.getValue(), dto);
+            return true;
+        } catch (Exception e) {
+            mailerService.sendEmailOnException(e);
+        }
+        return false;
+    }
 
     public Boolean ArchiveEmployee(){
         return false;
