@@ -18,4 +18,5 @@ public interface EmployeeQuestionRepository extends JpaRepository<EmployeeQuesti
     @Query("SELECT DISTINCT eq.employeeId.id FROM EmployeeQuestions eq")
     List<Long> findDistinctEmployeeIds();
 
+    void deleteAllByEmployeeIdId(Long id);
 }
