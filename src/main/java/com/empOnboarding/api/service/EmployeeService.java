@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
 import com.empOnboarding.api.utils.Constants;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
