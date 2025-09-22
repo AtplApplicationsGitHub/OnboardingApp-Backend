@@ -208,11 +208,43 @@ public class EmployeeService {
         return json;
     }
 
+    public PdfDTO generateAppetiteReportExcel(String startDate, String endDate, Long patientId, CommonDTO dto)
+            throws Exception {
+        String SHEET_NAME = "Add Employee Sample Download";
+        String documentFileName = SHEET_NAME + ".xls";
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        List<String> headers = Arrays.asList(
+                "Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
+                "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day"
+        );
+        List<String> lab = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Lab").stream().map(LookupItems::getValue).toList();
+        List<String> level = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Level").stream().map(LookupItems::getValue).toList();
+        List<String> department = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Department").stream().map(LookupItems::getValue).toList();
+
+        final String[] LEVEL_ARR = (level.isEmpty() ? new String[]{} : level.toArray(new String[0]));
+        final String[] LAB_ARR = (lab.isEmpty() ? new String[]{} : lab.toArray(new String[0]));
+        final String[] DEP_ARR = (department.isEmpty() ? new String[]{} : department.toArray(new String[0]));
+
+        HSSFWorkbook workbook = new HSSFWorkbook();
+        HSSFSheet sheet = workbook.createSheet(SHEET_NAME);
+        HSSFRow row = sheet.createRow(0);
+        for (int i = 0; i < headers.size(); i++) {
+            HSSFCell cell = row.createCell(i);
+            cell.setCellValue(headers.get(i));
+        }
+        workbook.write(byteArrayOutputStream);
+        workbook.close();
+        byte[] byteArray = byteArrayOutputStream.toByteArray();
+        byteArrayOutputStream.close();
+        PdfDTO excel = new PdfDTO(byteArray, documentFileName);
+        return excel;
+    }
+
     public PdfDTO generateExcel(CommonDTO dto) throws Exception {
         PdfDTO excel = new PdfDTO();
         try {
             final String SHEET_NAME = "Add Employee Sample Download";
-            final String documentFileName = SHEET_NAME + ".xlsx";
+            final String documentFileName = SHEET_NAME + ".xls";
 
             final List<String> headers = Arrays.asList(
                     "Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
