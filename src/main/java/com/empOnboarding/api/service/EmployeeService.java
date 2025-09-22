@@ -208,79 +208,88 @@ public class EmployeeService {
     }
 
     public PdfDTO generateExcel(CommonDTO dto) throws Exception {
-        final String SHEET_NAME = "Add Employee Sample Download";
-        final String documentFileName = SHEET_NAME + ".xlsx";
+        PdfDTO excel = new PdfDTO();
+        try {
+            final String SHEET_NAME = "Add Employee Sample Download";
+            final String documentFileName = SHEET_NAME + ".xlsx";
 
-        // Header order drives column positions
-        final List<String> headers = Arrays.asList(
-                "Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
-                "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day"
-        );
-        List<String> lab = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Lab").stream().map(LookupItems::getValue).toList();
-        List<String> level = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Level").stream().map(LookupItems::getValue).toList();
-        List<String> department = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Department").stream().map(LookupItems::getValue).toList();
+            // Header order drives column positions
+            final List<String> headers = Arrays.asList(
+                    "Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
+                    "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day"
+            );
+            List<String> lab = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Lab").stream().map(LookupItems::getValue).toList();
+            List<String> level = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Level").stream().map(LookupItems::getValue).toList();
+            List<String> department = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Department").stream().map(LookupItems::getValue).toList();
 
-        final String[] LEVEL_ARR = (level.isEmpty() ? new String[]{} : level.toArray(new String[0]));
-        final String[] LAB_ARR   = (lab.isEmpty()   ? new String[]{} : lab.toArray(new String[0]));
-        final String[] DEP_ARR   = (department.isEmpty()   ? new String[]{} : department.toArray(new String[0]));
-
-
-        final int FIRST_DATA_ROW = 1;
-        final int LAST_DATA_ROW = 1000;
-
-        try (HSSFWorkbook workbook = new HSSFWorkbook();
-             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-
-            HSSFSheet sheet = workbook.createSheet(SHEET_NAME);
-
-            HSSFCellStyle headerStyle = createCellStyle(workbook);
-            HSSFCellStyle dateStyle = createDateCellStyle(workbook);
-
-            createHeaderRow(sheet, headers, headerStyle);
-
-            final int dojColIdx = headers.indexOf("DOJ");
-            final int levelColIdx = headers.indexOf("Level");
-            final int labColIdx = headers.indexOf("Lab Allocation");
-            final int depColIdx = headers.indexOf("Department");
+            final String[] LEVEL_ARR = (level.isEmpty() ? new String[]{} : level.toArray(new String[0]));
+            final String[] LAB_ARR = (lab.isEmpty() ? new String[]{} : lab.toArray(new String[0]));
+            final String[] DEP_ARR = (department.isEmpty() ? new String[]{} : department.toArray(new String[0]));
 
 
-            if (dojColIdx >= 0) {
-                for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
-                    Row row = sheet.getRow(r) != null ? sheet.getRow(r) : sheet.createRow(r);
-                    Cell c = row.createCell(dojColIdx);
-                    c.setCellStyle(dateStyle);
+            final int FIRST_DATA_ROW = 1;
+            final int LAST_DATA_ROW = 1000;
+
+            try (HSSFWorkbook workbook = new HSSFWorkbook();
+                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+
+                HSSFSheet sheet = workbook.createSheet(SHEET_NAME);
+
+                HSSFCellStyle headerStyle = createCellStyle(workbook);
+                HSSFCellStyle dateStyle = createDateCellStyle(workbook);
+
+                createHeaderRow(sheet, headers, headerStyle);
+
+                final int dojColIdx = headers.indexOf("DOJ");
+                final int levelColIdx = headers.indexOf("Level");
+                final int labColIdx = headers.indexOf("Lab Allocation");
+                final int depColIdx = headers.indexOf("Department");
+
+
+                if (dojColIdx >= 0) {
+                    for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
+                        Row row = sheet.getRow(r) != null ? sheet.getRow(r) : sheet.createRow(r);
+                        Cell c = row.createCell(dojColIdx);
+                        c.setCellStyle(dateStyle);
+                    }
                 }
+
+                // Dropdowns
+                if (levelColIdx >= 0) {
+                    addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, levelColIdx, LEVEL_ARR);
+                }
+                if (labColIdx >= 0) {
+                    addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, labColIdx, LAB_ARR);
+                }
+                if (depColIdx >= 0) {
+                    addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, depColIdx, DEP_ARR);
+                }
+
+                // Freeze header and autosize for readability
+                sheet.createFreezePane(0, 1);
+                for (int c = 0; c < headers.size(); c++) sheet.autoSizeColumn(c);
+
+                // Serialize workbook
+                workbook.write(byteArrayOutputStream);
+                byte[] byteArray = byteArrayOutputStream.toByteArray();
+
+                excel.setPdf(byteArray);
+                excel.setFileName(documentFileName);
+
+                // Audit trail (unchanged)
+                dto.setModuleId(Constants.ADD_EMPLOYEE);
+                dto.setModule(Constants.ADD_EMPLOYEE);
+                dto.setSystemRemarks("Add Employee Excel has been downloaded");
+                auditTrailService.saveAuditTrail(Constants.EXCEL_EXPORT.getValue(), dto);
+
+
             }
-
-            // Dropdowns
-            if (levelColIdx >= 0) {
-                addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, levelColIdx, LEVEL_ARR);
-            }
-            if (labColIdx >= 0) {
-                addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, labColIdx, LAB_ARR);
-            }
-            if (depColIdx >= 0) {
-                addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, depColIdx, DEP_ARR);
-            }
-
-            // Freeze header and autosize for readability
-            sheet.createFreezePane(0, 1);
-            for (int c = 0; c < headers.size(); c++) sheet.autoSizeColumn(c);
-
-            // Serialize workbook
-            workbook.write(byteArrayOutputStream);
-            byte[] byteArray = byteArrayOutputStream.toByteArray();
-
-            PdfDTO excel = new PdfDTO(byteArray, documentFileName);
-
-            // Audit trail (unchanged)
-            dto.setModuleId(Constants.ADD_EMPLOYEE);
-            dto.setModule(Constants.ADD_EMPLOYEE);
-            dto.setSystemRemarks("Add Employee Excel has been downloaded");
-            auditTrailService.saveAuditTrail(Constants.EXCEL_EXPORT.getValue(), dto);
-
-            return excel;
         }
+            catch(Exception e){
+                mailerService.sendEmailOnException(e);
+            }
+            return excel;
+
     }
 
     private HSSFCellStyle createDateCellStyle(HSSFWorkbook workbook) {
