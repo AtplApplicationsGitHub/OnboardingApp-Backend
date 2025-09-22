@@ -37,9 +37,12 @@ public class TaskService {
 
     private final EmployeeRepository employeeRepository;
 
+    private final AuditTrailService auditTrailService;
+
     public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository,UsersRepository usersRepository, QuestionRepository questionRepository,
                        ConstantRepository constantRepository,GroupRepository groupRepository,
-                       EmployeeFeedbackRepository employeeFeedbackRepository,EmployeeRepository employeeRepository) {
+                       EmployeeFeedbackRepository employeeFeedbackRepository,EmployeeRepository employeeRepository,
+                       AuditTrailService auditTrailService) {
         this.taskRepository = taskRepository;
         this.usersRepository = usersRepository;
         this.questionRepository = questionRepository;
@@ -48,22 +51,47 @@ public class TaskService {
         this.taskQuestionRepository = taskQuestionRepository;
         this.employeeFeedbackRepository = employeeFeedbackRepository;
         this.employeeRepository = employeeRepository;
+        this.auditTrailService = auditTrailService;
     }
 
     @Transactional
     public void createTask(List<Employee> employees, UserPrincipal user) {
-        Users actor = usersRepository.getReferenceById(user.getId());
+        final Users actor = usersRepository.getReferenceById(user.getId());
+        final Date now = new Date();
+
         for (Employee emp : employees) {
-            List<Questions> questions = questionRepository.findDistinctByLevelAndDepartment(emp.getLevel(),emp.getDepartment());
-            Map<Long, List<Questions>> byGroup = questions.stream()
-                    .filter(q -> q.getGroupId() != null && q.getGroupId().getId() != null)
+            final List<Questions> questions =
+                    questionRepository.findDistinctByLevelAndDepartment(emp.getLevel(), emp.getDepartment());
+
+            // Group by Group ID, but only where group is present
+            final Map<Long, List<Questions>> byGroup = questions.stream()
+                    .filter(q -> q != null && q.getGroupId() != null && q.getGroupId().getId() != null)
                     .collect(Collectors.groupingBy(q -> q.getGroupId().getId()));
-            Date now = new Date();
-            byGroup.forEach((groupId, questionsList) -> {
-                Groups g = groupRepository.getReferenceById(groupId);
-                if (questionsList == null || questionsList.isEmpty() || g.getAutoAssign().equalsIgnoreCase("No")) return;
-                Task task = new Task();
-                task.setId(nextId());
+
+            for (Map.Entry<Long, List<Questions>> entry : byGroup.entrySet()) {
+                final Long groupId = entry.getKey();
+                final List<Questions> questionsList = entry.getValue();
+
+                if (groupId == null || questionsList == null || questionsList.isEmpty()) {
+                    continue;
+                }
+
+                // Avoid proxies throwing on first property access; handle not-found
+                final Groups g = groupRepository.findById(groupId).orElse(null);
+                if (g == null) {
+                    // group row missing; skip
+                    continue;
+                }
+
+                // Null-safe autoAssign check — skip when "No" or blank
+                final String autoAssign = g.getAutoAssign();
+                if (autoAssign == null || autoAssign.equalsIgnoreCase("No")) {
+                    continue;
+                }
+
+                // Build task
+                final Task task = new Task();
+                task.setId(nextId());                         // ensure never null
                 task.setEmployeeId(emp);
                 task.setGroupId(g);
                 task.setCreatedBy(actor);
@@ -71,22 +99,39 @@ public class TaskService {
                 task.setCreatedTime(now);
                 task.setUpdatedTime(now);
                 task.setFreezeTask("N");
-                Users lead = questionsList.get(0).getGroupId().getPgLead();
-                task.setAssignedTo(lead != null ? lead : actor);
+                if (task.getTaskQuestions() == null) {
+                    task.setTaskQuestions(new HashSet<>());
+                }
+
+                // Prefer the group's lead; fall back to actor
+                final Users lead = (g.getPgLead() != null) ? g.getPgLead() : actor;
+                task.setAssignedTo(lead);
+
+                // Build TaskQuestions
                 for (Questions qn : questionsList) {
-                    TaskQuestions tq = new TaskQuestions();
+                    if (qn == null) continue;
+
+                    final TaskQuestions tq = new TaskQuestions();
                     tq.setTaskId(task);
                     tq.setQuestionId(qn);
-                    if(qn.getDefaultFlag().equalsIgnoreCase("yes")){
+
+                    final String def = qn.getDefaultFlag();
+                    if ("yes".equalsIgnoreCase(def)) {
                         tq.setResponse("YES");
                         tq.setStatus("completed");
+                    } else {
+                        tq.setStatus("pending");
                     }
+
                     task.getTaskQuestions().add(tq);
                 }
+
+                // Persist (ensure Task.taskQuestions has CascadeType.ALL)
                 taskRepository.save(task);
-            });
+            }
         }
     }
+
 
     @Transactional(readOnly = true)
     public String nextId() {
@@ -390,16 +435,42 @@ public class TaskService {
         return null;
     }
 
-    public void createTaskManual(long employeeId, List<Long> groupIds, UserPrincipal user,CommonDTO dto){
-        Employee e = employeeRepository.getReferenceById(employeeId);
-        Users actor = usersRepository.getReferenceById(user.getId());
-        Date now = new Date();
-        for(Long group:groupIds){
-            List<Questions> questions = questionRepository.findByGroupIdId(group);
-            Groups g = groupRepository.getReferenceById(group);
-            if (questions == null || questions.isEmpty()) return;
-            Task task = new Task();
-            task.setId(nextId());
+    @Transactional
+    public void createTaskManual(long employeeId, List<Long> groupIds, UserPrincipal user, CommonDTO dto) {
+        // Load required refs
+        final Employee e = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
+        final Users actor = usersRepository.getReferenceById(user.getId()); // should exist
+
+        final Date now = new Date();
+
+        if (groupIds == null || groupIds.isEmpty()) {
+            return; // nothing to do
+        }
+
+        for (Long groupId : groupIds) {
+            if (groupId == null) {
+                // skip null entries
+                continue;
+            }
+
+            // Avoid lazy proxy surprises and handle not-found
+            final Groups g = groupRepository.findById(groupId).orElse(null);
+            if (g == null) {
+                // group missing; skip this id
+                continue;
+            }
+
+            // Fetch questions for this group
+            final List<Questions> questions = questionRepository.findByGroupIdId(groupId);
+            if (questions == null || questions.isEmpty()) {
+                // no questions for this group; skip
+                continue;
+            }
+
+            // Build Task
+            final Task task = new Task();
+            task.setId(nextId()); // ensure non-null
             task.setEmployeeId(e);
             task.setGroupId(g);
             task.setCreatedBy(actor);
@@ -407,19 +478,42 @@ public class TaskService {
             task.setCreatedTime(now);
             task.setUpdatedTime(now);
             task.setFreezeTask("N");
-            Users lead = g.getPgLead();
-            task.setAssignedTo(lead != null ? lead : actor);
+
+            // Initialize Set if your entity doesn't by default
+            if (task.getTaskQuestions() == null) {
+                task.setTaskQuestions(new java.util.LinkedHashSet<>()); // deterministic order
+            }
+
+            // Assign to group's PG Lead if present; else actor
+            final Users lead = (g.getPgLead() != null) ? g.getPgLead() : actor;
+            task.setAssignedTo(lead);
+
+            // Create TaskQuestions (use a guard against duplicates by question id)
+            final java.util.Set<Long> seenQ = new java.util.HashSet<>();
             for (Questions qn : questions) {
-                TaskQuestions tq = new TaskQuestions();
+                if (qn == null || qn.getId() == null) continue;
+                if (!seenQ.add(qn.getId())) continue; // avoid duplicates
+
+                final TaskQuestions tq = new TaskQuestions();
                 tq.setTaskId(task);
                 tq.setQuestionId(qn);
-                if(qn.getDefaultFlag().equalsIgnoreCase("yes")){
+
+                final String def = qn.getDefaultFlag();
+                if ("yes".equalsIgnoreCase(def)) {
                     tq.setResponse("YES");
                     tq.setStatus("completed");
+                } else {
+                    tq.setStatus("pending");
                 }
+
                 task.getTaskQuestions().add(tq);
             }
             taskRepository.save(task);
+        }
+        if (dto != null) {
+            dto.setModuleId("NA");
+            dto.setSystemRemarks("Manual task creation");
+            auditTrailService.saveAuditTrail("DATA_CREATE", dto);
         }
     }
 
