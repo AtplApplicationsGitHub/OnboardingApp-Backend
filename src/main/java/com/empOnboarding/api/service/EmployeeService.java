@@ -54,7 +54,6 @@ public class EmployeeService {
 
     private final EmployeeQuestionRepository employeeQuestionRepository;
 
-
     public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
                            ConstantRepository constantRepository,EmployeeQuestionService employeeQuestionService,
                            MailerService mailerService, TaskService taskService, TaskRepository taskRepository,
@@ -755,8 +754,17 @@ public class EmployeeService {
         }
     }
 
-    public Boolean ArchiveEmployee(){
-        return false;
+    public Boolean ArchiveEmployee(Long empId){
+        try{
+            Optional<Employee> e = employeeRepositrory.findById(empId);
+
+
+        }catch(Exception e){
+            mailerService.sendEmailOnException(e);
+        }
+
+        return true;
+
     }
 
 
