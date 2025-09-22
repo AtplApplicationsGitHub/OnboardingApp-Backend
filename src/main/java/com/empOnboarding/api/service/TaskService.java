@@ -63,7 +63,6 @@ public class TaskService {
             final List<Questions> questions =
                     questionRepository.findDistinctByLevelAndDepartment(emp.getLevel(), emp.getDepartment());
 
-            // Group by Group ID, but only where group is present
             final Map<Long, List<Questions>> byGroup = questions.stream()
                     .filter(q -> q != null && q.getGroupId() != null && q.getGroupId().getId() != null)
                     .collect(Collectors.groupingBy(q -> q.getGroupId().getId()));
@@ -76,22 +75,18 @@ public class TaskService {
                     continue;
                 }
 
-                // Avoid proxies throwing on first property access; handle not-found
                 final Groups g = groupRepository.findById(groupId).orElse(null);
                 if (g == null) {
-                    // group row missing; skip
                     continue;
                 }
 
-                // Null-safe autoAssign check — skip when "No" or blank
                 final String autoAssign = g.getAutoAssign();
                 if (autoAssign == null || autoAssign.equalsIgnoreCase("No")) {
                     continue;
                 }
 
-                // Build task
                 final Task task = new Task();
-                task.setId(nextId());                         // ensure never null
+                task.setId(nextId());
                 task.setEmployeeId(emp);
                 task.setGroupId(g);
                 task.setCreatedBy(actor);
@@ -103,11 +98,9 @@ public class TaskService {
                     task.setTaskQuestions(new HashSet<>());
                 }
 
-                // Prefer the group's lead; fall back to actor
                 final Users lead = (g.getPgLead() != null) ? g.getPgLead() : actor;
                 task.setAssignedTo(lead);
 
-                // Build TaskQuestions
                 for (Questions qn : questionsList) {
                     if (qn == null) continue;
 
@@ -125,8 +118,6 @@ public class TaskService {
 
                     task.getTaskQuestions().add(tq);
                 }
-
-                // Persist (ensure Task.taskQuestions has CascadeType.ALL)
                 taskRepository.save(task);
             }
         }

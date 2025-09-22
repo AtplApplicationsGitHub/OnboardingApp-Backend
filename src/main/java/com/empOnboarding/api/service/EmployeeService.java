@@ -209,7 +209,7 @@ public class EmployeeService {
 
     public PdfDTO generateExcel(CommonDTO dto) throws Exception {
         final String SHEET_NAME = "Add Employee Sample Download";
-        final String documentFileName = SHEET_NAME + ".xls";
+        final String documentFileName = SHEET_NAME + ".xlsx";
 
         // Header order drives column positions
         final List<String> headers = Arrays.asList(
@@ -222,7 +222,7 @@ public class EmployeeService {
 
         final String[] LEVEL_ARR = (level.isEmpty() ? new String[]{} : level.toArray(new String[0]));
         final String[] LAB_ARR   = (lab.isEmpty()   ? new String[]{} : lab.toArray(new String[0]));
-        final String[] DEP_ARR   = (lab.isEmpty()   ? new String[]{} : department.toArray(new String[0]));
+        final String[] DEP_ARR   = (department.isEmpty()   ? new String[]{} : department.toArray(new String[0]));
 
 
         final int FIRST_DATA_ROW = 1;
