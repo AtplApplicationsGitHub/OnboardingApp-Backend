@@ -16,6 +16,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddressList;
 
 
+import org.apache.poi.xssf.usermodel.*;
 import org.json.JSONArray;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
@@ -213,7 +214,6 @@ public class EmployeeService {
             final String SHEET_NAME = "Add Employee Sample Download";
             final String documentFileName = SHEET_NAME + ".xlsx";
 
-            // Header order drives column positions
             final List<String> headers = Arrays.asList(
                     "Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
                     "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day"
@@ -230,13 +230,13 @@ public class EmployeeService {
             final int FIRST_DATA_ROW = 1;
             final int LAST_DATA_ROW = 1000;
 
-            try (HSSFWorkbook workbook = new HSSFWorkbook();
+            try (XSSFWorkbook workbook = new XSSFWorkbook();
                  ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
 
-                HSSFSheet sheet = workbook.createSheet(SHEET_NAME);
+                XSSFSheet sheet = workbook.createSheet(SHEET_NAME);
 
-                HSSFCellStyle headerStyle = createCellStyle(workbook);
-                HSSFCellStyle dateStyle = createDateCellStyle(workbook);
+                var headerStyle = createCellStyle(workbook);
+                var dateStyle = createDateCellStyle(workbook);
 
                 createHeaderRow(sheet, headers, headerStyle);
 
@@ -253,8 +253,6 @@ public class EmployeeService {
                         c.setCellStyle(dateStyle);
                     }
                 }
-
-                // Dropdowns
                 if (levelColIdx >= 0) {
                     addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, levelColIdx, LEVEL_ARR);
                 }
@@ -264,25 +262,16 @@ public class EmployeeService {
                 if (depColIdx >= 0) {
                     addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, depColIdx, DEP_ARR);
                 }
-
-                // Freeze header and autosize for readability
                 sheet.createFreezePane(0, 1);
                 for (int c = 0; c < headers.size(); c++) sheet.autoSizeColumn(c);
-
-                // Serialize workbook
                 workbook.write(byteArrayOutputStream);
                 byte[] byteArray = byteArrayOutputStream.toByteArray();
-
                 excel.setPdf(byteArray);
                 excel.setFileName(documentFileName);
-
-                // Audit trail (unchanged)
                 dto.setModuleId(Constants.ADD_EMPLOYEE);
                 dto.setModule(Constants.ADD_EMPLOYEE);
                 dto.setSystemRemarks("Add Employee Excel has been downloaded");
                 auditTrailService.saveAuditTrail(Constants.EXCEL_EXPORT.getValue(), dto);
-
-
             }
         }
             catch(Exception e){
@@ -292,9 +281,9 @@ public class EmployeeService {
 
     }
 
-    private HSSFCellStyle createDateCellStyle(HSSFWorkbook workbook) {
-        HSSFDataFormat df = workbook.createDataFormat();
-        HSSFCellStyle style = workbook.createCellStyle();
+    private XSSFCellStyle createDateCellStyle(XSSFWorkbook workbook) {
+        XSSFDataFormat df = workbook.createDataFormat();
+        XSSFCellStyle style = workbook.createCellStyle();
         style.setDataFormat(df.getFormat("dd-mmm-yyyy")); // e.g., 26-Aug-2025
         style.setAlignment(HorizontalAlignment.CENTER);
         style.setVerticalAlignment(VerticalAlignment.CENTER);
@@ -304,14 +293,14 @@ public class EmployeeService {
     /**
      * Add an explicit list dropdown to a single column across a row range (.xls / HSSF).
      */
-    private void addExplicitListValidation(HSSFSheet sheet,
+    private void addExplicitListValidation(XSSFSheet sheet,
                                            int firstRow, int lastRow,
                                            int columnIndex,
                                            String[] values) {
-        HSSFDataValidationHelper helper = new HSSFDataValidationHelper(sheet);
+        XSSFDataValidationHelper helper = new XSSFDataValidationHelper(sheet);
         DataValidationConstraint constraint = helper.createExplicitListConstraint(values);
         CellRangeAddressList region = new CellRangeAddressList(firstRow, lastRow, columnIndex, columnIndex);
-        HSSFDataValidation validation = (HSSFDataValidation) helper.createValidation(constraint, region);
+        XSSFDataValidation validation = (XSSFDataValidation) helper.createValidation(constraint, region);
 
         // Better UX + stricter enforcement
         validation.setSuppressDropDownArrow(false);
@@ -322,17 +311,17 @@ public class EmployeeService {
         sheet.addValidationData(validation);
     }
 
-    private void createHeaderRow(HSSFSheet sheet, List<String> headers, HSSFCellStyle cellStyle) {
-        HSSFRow row = sheet.createRow(0);
+    private void createHeaderRow(XSSFSheet sheet, List<String> headers, XSSFCellStyle cellStyle) {
+        XSSFRow row = sheet.createRow(0);
         for (int i = 0; i < headers.size(); i++) {
-            HSSFCell cell = row.createCell(i);
+            XSSFCell cell = row.createCell(i);
             cell.setCellValue(headers.get(i));
             cell.setCellStyle(cellStyle);
         }
     }
 
-    private HSSFCellStyle createCellStyle(HSSFWorkbook workbook) {
-        HSSFCellStyle cellStyle = workbook.createCellStyle();
+    private XSSFCellStyle createCellStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle cellStyle = workbook.createCellStyle();
         cellStyle.setBorderTop(BorderStyle.THIN);
         cellStyle.setBorderBottom(BorderStyle.THIN);
         cellStyle.setBorderLeft(BorderStyle.THIN);
