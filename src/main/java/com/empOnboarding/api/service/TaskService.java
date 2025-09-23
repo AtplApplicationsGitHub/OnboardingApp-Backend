@@ -432,28 +432,20 @@ public class TaskService {
         final Employee e = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
         final Users actor = usersRepository.getReferenceById(user.getId()); // should exist
-
         final Date now = new Date();
-
         if (groupIds == null || groupIds.isEmpty()) {
-            return; // nothing to do
+            return;
         }
-
         for (Long groupId : groupIds) {
             if (groupId == null) {
-                // skip null entries
                 continue;
             }
 
-            // Avoid lazy proxy surprises and handle not-found
             final Groups g = groupRepository.findById(groupId).orElse(null);
             if (g == null) {
-                // group missing; skip this id
                 continue;
             }
-
-            // Fetch questions for this group
-            final List<Questions> questions = questionRepository.findByGroupIdId(groupId);
+            final List<Questions> questions = questionRepository.findByGroupIdIdAndQuestionDepartmentDepartmentValue(groupId,e.getDepartment());
             if (questions == null || questions.isEmpty()) {
                 // no questions for this group; skip
                 continue;

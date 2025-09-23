@@ -33,4 +33,6 @@ public interface QuestionRepository extends JpaRepository<Questions, Long> {
     List<Questions> findAllByQuestionLevelsLevel(String level);
 
     List<Questions> findByGroupIdId(Long group);
+
+	List<Questions> findByGroupIdIdAndQuestionDepartmentDepartmentValue(Long groupId, String department);
 }
