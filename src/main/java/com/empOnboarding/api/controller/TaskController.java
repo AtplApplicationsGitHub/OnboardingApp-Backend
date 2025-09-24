@@ -43,6 +43,11 @@ public class TaskController {
         return taskService.findById(id);
     }
 
+    @GetMapping("/findByEmpId/{id}")
+    public List<TaskDTO> findDataById(@PathVariable Long id) {
+        return taskService.findByEmpId(id);
+    }
+
     @GetMapping("/reassignTask/{taskId}/{id}")
     public boolean reassignTask(@PathVariable String taskId,@PathVariable Long id) {
         return taskService.reassignTask(taskId,id);

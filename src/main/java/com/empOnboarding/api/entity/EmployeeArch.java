@@ -24,7 +24,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "employee")
+@Table(name = "employee_arch")
 @AllArgsConstructor
 @NoArgsConstructor
 public class EmployeeArch implements java.io.Serializable {

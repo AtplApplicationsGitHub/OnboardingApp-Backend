@@ -94,6 +94,8 @@ public class QuestionService {
 		Constant c = constantRepository.findByConstant("DateFormat");
 		qDto.setCreatedTime(CommonUtls.datetoString(ques.getCreatedTime(),c.getConstantValue()));
 		qDto.setUpdatedTime(CommonUtls.datetoString(ques.getUpdatedTime(),c.getConstantValue()));
+		Boolean t = taskRepository.existsByTaskQuestionsQuestionIdId(ques.getId());
+		qDto.setDeleteFlag(!t);
 		return qDto;
 	}
 	

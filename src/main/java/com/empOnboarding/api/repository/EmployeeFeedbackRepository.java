@@ -21,4 +21,6 @@ public interface EmployeeFeedbackRepository extends JpaRepository<EmployeeFeedba
     Optional<EmployeeFeedback> findByTaskIdIdAndEmployeeIdId(String taskId, Long id);
 
     void deleteAllByEmployeeIdId(Long id);
+
+    Optional<EmployeeFeedback> findByEmployeeIdId(Long empId);
 }

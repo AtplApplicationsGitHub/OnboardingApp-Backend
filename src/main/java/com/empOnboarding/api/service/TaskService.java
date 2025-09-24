@@ -289,6 +289,13 @@ public class TaskService {
         return tDTOs;
     }
 
+    public List<TaskDTO> findByEmpId(Long id) {
+        List<TaskDTO> tDTOs;
+        List<Task> t =  taskRepository.findAllByEmployeeIdIdAndFreezeTask(id,"N");
+        tDTOs = t.stream().map(this::populateTask).collect(Collectors.toList());
+        return tDTOs;
+    }
+
     public Boolean freezeTask(String id){
         List<String> taskIdList = Arrays.stream(id.split(",")).toList();
         List<Task> t =  taskRepository.findAllById(taskIdList);

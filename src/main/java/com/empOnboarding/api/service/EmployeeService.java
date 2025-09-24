@@ -55,11 +55,24 @@ public class EmployeeService {
 
     private final EmployeeQuestionRepository employeeQuestionRepository;
 
+    private final EmployeeArchRepository employeeArchRepository;
+
+    private final EmployeeFeedbackArchRepository employeeFeedbackArchRepository;
+
+    private final TaskArchRepository taskArchRepository;
+
+    private final EmployeeArchQuestionRepository employeeArchQuestionRepository;
+
+    private final TaskQuestionArchRepository taskQuestionArchRepository;
+
     public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
                            ConstantRepository constantRepository,EmployeeQuestionService employeeQuestionService,
                            MailerService mailerService, TaskService taskService, TaskRepository taskRepository,
                            EmployeeFeedbackRepository employeeFeedbackRepository, LookupItemsRepository lookupItemsRepository,
-                           TaskQuestionRepository taskQuestionRepository,EmployeeQuestionRepository employeeQuestionRepository) {
+                           TaskQuestionRepository taskQuestionRepository,EmployeeQuestionRepository employeeQuestionRepository,
+                           EmployeeArchRepository employeeArchRepository,EmployeeFeedbackArchRepository employeeFeedbackArchRepository,
+                           TaskArchRepository taskArchRepository,EmployeeArchQuestionRepository employeeArchQuestionRepository,
+                           TaskQuestionArchRepository taskQuestionArchRepository) {
         this.employeeRepositrory = employeeRepositrory;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
@@ -71,6 +84,11 @@ public class EmployeeService {
         this.lookupItemsRepository = lookupItemsRepository;
         this.taskQuestionRepository = taskQuestionRepository;
         this.employeeQuestionRepository = employeeQuestionRepository;
+        this.employeeArchRepository = employeeArchRepository;
+        this.employeeFeedbackArchRepository = employeeFeedbackArchRepository;
+        this.taskArchRepository = taskArchRepository;
+        this.employeeArchQuestionRepository = employeeArchQuestionRepository;
+        this.taskQuestionArchRepository = taskQuestionArchRepository;
     }
 
     public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user) {
@@ -784,18 +802,68 @@ public class EmployeeService {
         }
     }
 
-    public Boolean ArchiveEmployee(Long empId){
+    public Boolean ArchiveEmployee(Long empId,UserPrincipal user){
         try{
-            Optional<Employee> e = employeeRepositrory.findById(empId);
+            Employee e = employeeRepositrory.findById(empId).orElse(null);
+            List<Task> tasks = taskRepository.findAllByEmployeeIdId(empId);
+            List<Long> tqIds = new ArrayList<>();
+            EmployeeArch empArch = new EmployeeArch(e.getId(), e.getEmail(), e.getName(), e.getDepartment(), e.getRole(), e.getLevel(),
+                        e.getTotalExperience(), e.getPastOrganization(), e.getLabAllocation(), e.getComplainceDay(),
+                        e.getDate(), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
+            employeeArchRepository.save(empArch);
+            for(Task t :tasks){
+                TaskArch taskArch = new TaskArch(t.getId(),empArch,t.getGroupId(),t.getAssignedTo(),null,
+                        t.getUpdatedTime(),t.getCreatedTime(),new Users(user.getId()), t.getCreatedBy(), t.getFreezeTask());
+                taskArchRepository.save(taskArch);
+                List<TaskQuestionsArch> tqArchList = t.getTaskQuestions().stream()
+                        .filter(Objects::nonNull)
+                        .map(tq -> {
+                            TaskQuestionsArch a = new TaskQuestionsArch();
+                            a.setId(tq.getId());
+                            a.setTaskId(taskArch);
+                            a.setQuestionId(tq.getQuestionId());
+                            a.setResponse(tq.getResponse());
+                            a.setStatus(tq.getStatus());
+                            return a;
+                        })
+                        .collect(Collectors.toList());
+                tqIds = tqArchList.stream().map(TaskQuestionsArch::getId).toList();
+                taskQuestionArchRepository.saveAll(tqArchList);
+                EmployeeFeedback ef = employeeFeedbackRepository.findByEmployeeIdId(empId).orElse(null);
+                EmployeeFeedbackArch eAf = new EmployeeFeedbackArch(ef.getId(),!CommonUtls.isCompletlyEmpty(ef.getStar())?ef.getStar():null ,ef.getFeedback(),"Y",taskArch,empArch,new Date());
+                employeeFeedbackArchRepository.save(eAf);
+            }
+            List<EmployeeQuestions> eq = employeeQuestionRepository.findAllByEmployeeIdIdOrderByCreatedTimeDesc(empId);
+            List<EmployeeQuestionsArch> eqArchList = eq.stream()
+                    .filter(Objects::nonNull)
+                    .map(tq -> {
+                        EmployeeQuestionsArch a = new EmployeeQuestionsArch();
+                        a.setId(tq.getId());
+                        a.setQuestionId(tq.getQuestionId());
+                        a.setResponse(tq.getResponse());
+                        a.setCompletedFlag(tq.getCompletedFlag());
+                        a.setEmployeeId(empArch);
+                        a.setCreatedTime(tq.getCreatedTime());
+                        return a;
+                    })
+                    .collect(Collectors.toList());
+            employeeArchQuestionRepository.saveAll(eqArchList);
 
+
+            employeeQuestionRepository.deleteAllById(eq.stream().map(EmployeeQuestions::getId).collect(Collectors.toList()));
+            employeeFeedbackRepository.deleteAllByEmployeeIdId(empId);
+            taskQuestionRepository.deleteAllById(tqIds);
+            taskRepository.deleteAllById(tasks.stream().map(Task::getId).collect(Collectors.toList()));
+            employeeRepositrory.deleteById(empId);
 
         }catch(Exception e){
             mailerService.sendEmailOnException(e);
         }
-
         return true;
-
     }
+
+
+
 
 
 }
