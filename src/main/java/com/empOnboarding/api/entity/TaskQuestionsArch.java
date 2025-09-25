@@ -33,7 +33,7 @@ public class TaskQuestionsArch implements java.io.Serializable{
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "task_id", referencedColumnName = "id")
-    private Task taskId;
+    private TaskArch taskId;
 
     @Column(name = "status")
     private String status;

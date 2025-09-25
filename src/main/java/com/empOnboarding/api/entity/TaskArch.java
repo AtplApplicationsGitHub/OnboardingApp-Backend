@@ -26,7 +26,7 @@ public class TaskArch {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", referencedColumnName = "id")
-    private Employee employeeId;
+    private EmployeeArch employeeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", referencedColumnName = "id")

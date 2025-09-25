@@ -27,7 +27,7 @@ public class EmployeeQuestionsArch implements java.io.Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", referencedColumnName = "id")
-    private Employee employeeId;
+    private EmployeeArch employeeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id", referencedColumnName = "id")

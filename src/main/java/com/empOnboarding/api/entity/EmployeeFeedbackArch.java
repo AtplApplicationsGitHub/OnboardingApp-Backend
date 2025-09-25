@@ -24,7 +24,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "employee_feedback")
+@Table(name = "employee_feedback_arch")
 @AllArgsConstructor
 @NoArgsConstructor
 public class EmployeeFeedbackArch implements java.io.Serializable {

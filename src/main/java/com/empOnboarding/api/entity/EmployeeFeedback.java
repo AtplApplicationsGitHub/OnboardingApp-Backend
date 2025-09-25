@@ -44,7 +44,6 @@ public class EmployeeFeedback implements java.io.Serializable {
     @Column(name = "completed")
     private String completed;
 
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "task_id", referencedColumnName = "id")
     private Task taskId;

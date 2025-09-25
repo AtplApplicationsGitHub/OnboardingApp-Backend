@@ -177,4 +177,14 @@ public class EmployeeController {
 		dto.setModule(Constants.EMPLOYEE);
 		return employeeService.deleteEmployee(id,dto);
 	}
+
+	@PostMapping("archiveEmployee/{id}")
+	public Boolean archiveEmployee(@PathVariable Long id, HttpServletRequest request, UserPrincipal user){
+		CommonDTO dto = new CommonDTO();
+		dto.setLoginUserId(user.getId());
+		dto.setIpAddress(request.getRemoteAddr());
+		dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+		dto.setModule(Constants.EMPLOYEE);
+		return employeeService.ArchiveEmployee(id,user);
+	}
 }
