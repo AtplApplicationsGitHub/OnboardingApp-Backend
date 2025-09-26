@@ -37,12 +37,14 @@ public class TaskService {
 
     private final EmployeeRepository employeeRepository;
 
+    private final TaskArchRepository taskArchRepository;
+
     private final AuditTrailService auditTrailService;
 
     public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository,UsersRepository usersRepository, QuestionRepository questionRepository,
                        ConstantRepository constantRepository,GroupRepository groupRepository,
                        EmployeeFeedbackRepository employeeFeedbackRepository,EmployeeRepository employeeRepository,
-                       AuditTrailService auditTrailService) {
+                       TaskArchRepository taskArchRepository, AuditTrailService auditTrailService) {
         this.taskRepository = taskRepository;
         this.usersRepository = usersRepository;
         this.questionRepository = questionRepository;
@@ -52,6 +54,7 @@ public class TaskService {
         this.employeeFeedbackRepository = employeeFeedbackRepository;
         this.employeeRepository = employeeRepository;
         this.auditTrailService = auditTrailService;
+        this.taskArchRepository = taskArchRepository;
     }
 
     @Transactional
@@ -175,6 +178,21 @@ public class TaskService {
         return json;
     }
 
+    public JSONObject filteredArchiveTaskForAdmin(String search,String pageNo) {
+        JSONObject json = new JSONObject();
+        Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
+        Page<TaskProjection> taskList;
+        if(!CommonUtls.isCompletlyEmpty(search)){
+            taskList = taskRepository.findArchievedEmployeeTaskSummariesWithSearch(search,pageable);
+//            taskList.stream().map(m-> m.setDoj(m.getDoj().format(formatter))).collect(Collectors.toList());
+        }else{
+            taskList = taskRepository.findArchievedEmployeeTaskSummaries(pageable);
+        }
+        json.put("commonListDto", taskList);
+        json.put("totalElements", taskList.getTotalElements());
+        return json;
+    }
+
     @SuppressWarnings("unchecked")
     public JSONObject filteredTaskForEmployee(Long eId,String pageNo) {
         JSONObject json = new JSONObject();
@@ -234,6 +252,52 @@ public class TaskService {
         return tDto;
     }
 
+    public TaskDTO populateTaskArch(TaskArch task) {
+        TaskDTO tDto = new TaskDTO();
+        Constant c = constantRepository.findByConstant("DateFormat");
+        Optional<EmployeeFeedback> ef = employeeFeedbackRepository.findByTaskIdId(task.getId());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
+        EmployeeArch e = task.getEmployeeId();
+        tDto.setId(task.getId());
+        tDto.setGroupName(task.getGroupId().getName());
+        tDto.setEmployeeId(e.getId());
+        tDto.setEmployeeName(e.getName());
+        tDto.setLevel(e.getLevel());
+        tDto.setDepartment(e.getDepartment());
+        tDto.setRole(e.getRole());
+        tDto.setLab(e.getLabAllocation());
+        tDto.setPastExperience(e.getTotalExperience());
+        tDto.setPrevCompany(e.getPastOrganization());
+        tDto.setComplianceDay(e.getComplainceDay());
+        tDto.setAssignedTo(task.getAssignedTo().getName());
+        tDto.setFreezeTask(task.getFreezeTask());
+        Set<TaskQuestionsArch> tq = task.getTaskQuestions();
+        if(ef.isPresent()){
+            tDto.setEFId(ef.get().getId().toString());
+            tDto.setEFStar(ef.get().getStar());
+            tDto.setFeedback(ef.get().getFeedback());
+        }
+        long completed = tq.stream()
+                .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
+                .count();
+        if (completed == tq.size()){
+            tDto.setStatus("Completed");
+        } else{
+            tDto.setStatus("In Progress");
+        }
+        tDto.setDoj(e.getDate().format(formatter));
+        tDto.setTotalQuestions(tq.size());
+        List<TaskQuestionsDTO> questionDto = tq.stream()
+                .map(q -> populateTaskQuestionArch(q, e.getDate()))
+                .sorted(Comparator.comparing(TaskQuestionsDTO::getCreatedTime)) // ascending
+                .collect(Collectors.toList());
+        tDto.setQuestionList(questionDto);
+        tDto.setCompletedQuestions(completed);
+        tDto.setCreatedTime(CommonUtls.datetoString(task.getCreatedTime(), c.getConstantValue()));
+        tDto.setUpdatedTime(CommonUtls.datetoString(task.getUpdatedTime(), c.getConstantValue()));
+        return tDto;
+    }
+
     public TaskQuestionsDTO populateTaskQuestion(TaskQuestions taskQuestions, LocalDate baseDate) {
         TaskQuestionsDTO dto = new TaskQuestionsDTO();
         dto.setId(taskQuestions.getId().toString());
@@ -280,12 +344,66 @@ public class TaskService {
         return dto;
     }
 
+    public TaskQuestionsDTO populateTaskQuestionArch(TaskQuestionsArch taskQuestions, LocalDate baseDate) {
+        TaskQuestionsDTO dto = new TaskQuestionsDTO();
+        dto.setId(taskQuestions.getId().toString());
+
+        try {
+            // Check if the question exists and is accessible
+            Questions question = taskQuestions.getQuestionId();
+            if (question != null) {
+                dto.setQuestionId(question.getText());
+
+                int offsetDays = question.getPeriod().equalsIgnoreCase("after")
+                        ?  Integer.parseInt(question.getComplainceDay())
+                        : -Integer.parseInt(question.getComplainceDay());
+                LocalDate complianceDate = baseDate.plusDays(offsetDays);
+
+                dto.setOverDueFlag(!"completed".equalsIgnoreCase(taskQuestions.getStatus())
+                        && complianceDate.isBefore(LocalDate.now()));
+                Date utilDate = java.sql.Date.valueOf(complianceDate);
+                Constant c = constantRepository.findByConstant("DateFormat");
+                String formattedDate = CommonUtls.datetoString(utilDate, c.getConstantValue());
+                dto.setComplianceDay(formattedDate);
+                dto.setResponseType(question.getResponse());
+                dto.setCreatedTime(question.getCreatedTime().toString());
+            } else {
+                // Handle missing question gracefully
+                dto.setQuestionId("Question not found (ID: " + taskQuestions.getId() + ")");
+                dto.setComplianceDay(baseDate.toString());
+                dto.setResponseType("TEXT");
+                dto.setOverDueFlag(false);
+                dto.setCreatedTime(new Date().toString());
+            }
+        } catch (Exception e) {
+            // Handle any Hibernate proxy exceptions or missing entities
+            System.err.println("Error loading question for TaskQuestion ID " + taskQuestions.getId() + ": " + e.getMessage());
+            dto.setQuestionId("Question not available (Error loading question)");
+            dto.setComplianceDay(baseDate.toString());
+            dto.setResponseType("TEXT");
+            dto.setOverDueFlag(false);
+            dto.setCreatedTime(new Date().toString());
+        }
+
+        dto.setResponse(taskQuestions.getResponse());
+        dto.setStatus(taskQuestions.getStatus());
+        return dto;
+    }
+
 
     public List<TaskDTO> findById(String id) {
         List<TaskDTO> tDTOs;
         List<String> tId = Arrays.stream(id.split(",")).toList();
         List<Task> t =  taskRepository.findAllById(tId);
         tDTOs = t.stream().map(this::populateTask).collect(Collectors.toList());
+        return tDTOs;
+    }
+
+    public List<TaskDTO> findArchiveTaskById(String id) {
+        List<TaskDTO> tDTOs;
+        List<String> tId = Arrays.stream(id.split(",")).toList();
+        List<TaskArch> t =  taskArchRepository.findAllById(tId);
+        tDTOs = t.stream().map(this::populateTaskArch).collect(Collectors.toList());
         return tDTOs;
     }
 

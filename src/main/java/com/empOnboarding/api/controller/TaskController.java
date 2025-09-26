@@ -32,6 +32,11 @@ public class TaskController {
         return taskService.filteredTaskForAdmin(search,pageNo);
     }
 
+    @PostMapping("/filteredArchiveTaskForAdmin/{search}/{pageNo}")
+    public JSONObject filteredArchiveTaskForAdmin(@PathVariable String search,@PathVariable String pageNo) {
+        return taskService.filteredArchiveTaskForAdmin(search,pageNo);
+    }
+
     @PostMapping("/filteredTaskForEmployee/{pageNo}")
     public JSONObject filteredTaskForEmployee(@CurrentUser UserPrincipal user,@PathVariable String pageNo) {
         return taskService.filteredTaskForEmployee(user.getId(),pageNo);
@@ -41,6 +46,11 @@ public class TaskController {
     @GetMapping("/findById/{id}")
     public List<TaskDTO> findDataById(@PathVariable String id) {
         return taskService.findById(id);
+    }
+
+    @GetMapping("/findByArchTaskId/{id}")
+    public List<TaskDTO> findArchDataById(@PathVariable String id) {
+        return taskService.findArchiveTaskById(id);
     }
 
     @GetMapping("/findByEmpId/{id}")

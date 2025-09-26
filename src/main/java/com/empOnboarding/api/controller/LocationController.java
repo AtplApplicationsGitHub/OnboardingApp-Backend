@@ -52,5 +52,10 @@ public class LocationController {
         return locationService.location(department);
     }
 
+    @GetMapping("/findAllLocation")
+    public List<DropDownDTO> findAllLocation(){
+        return locationService.department();
+    }
+
 
 }

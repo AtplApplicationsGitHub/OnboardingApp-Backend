@@ -9,6 +9,7 @@ import com.empOnboarding.api.dto.GroupsDTO;
 import com.empOnboarding.api.dto.LocationDTO;
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.LocationRepository;
+import com.empOnboarding.api.repository.LookupItemsRepository;
 import com.empOnboarding.api.security.UserPrincipal;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
@@ -30,14 +31,18 @@ public class LocationService {
 
     private final ConstantRepository constantRepository;
 
+    private final LookupItemsRepository lookupItemsRepository;
+
     private final MailerService mailerService;
 
     public LocationService(LocationRepository locationRepository,AuditTrailService auditTrailService,
-                           ConstantRepository constantRepository,MailerService mailerService){
+                           ConstantRepository constantRepository,MailerService mailerService,
+                           LookupItemsRepository lookupItemsRepository){
         this.locationRepository = locationRepository;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
         this.mailerService = mailerService;
+        this.lookupItemsRepository = lookupItemsRepository;
     }
 
     public Boolean createLocation(LocationDTO lDto, CommonDTO dto, UserPrincipal user) {
@@ -105,5 +110,20 @@ public class LocationService {
                 .collect(Collectors.toList());
         return dto;
     }
+
+    public List<DropDownDTO> department(){
+        List<LookupItems> li = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Department");
+        List<String> loc =  locationRepository.findAllDistinctLocation();
+        return li.stream()
+                .filter(l -> {
+                    String key = l.getKey();
+                    return key == null || !loc.contains(key);
+                })
+                .map(l -> new DropDownDTO(l.getId(), l.getValue()))
+                .toList();
+    }
+
+
+
 
 }
