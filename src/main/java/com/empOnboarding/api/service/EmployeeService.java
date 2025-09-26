@@ -797,17 +797,17 @@ public class EmployeeService {
             return true;
         } catch (Exception e) {
             mailerService.sendEmailOnException(e);
-            // Let the tx roll back
             throw e;
         }
     }
 
-    public Boolean ArchiveEmployee(Long empId,UserPrincipal user){
+    public void ArchiveEmployee(Long empId,UserPrincipal user){
         try{
             Employee e = employeeRepositrory.findById(empId).orElse(null);
             List<Task> tasks = taskRepository.findAllByEmployeeIdId(empId);
             List<Long> tqIds = new ArrayList<>();
-            EmployeeArch empArch = new EmployeeArch(e.getId(), e.getEmail(), e.getName(), e.getDepartment(), e.getRole(), e.getLevel(),
+            List<Long> efIds = new ArrayList<>();
+            EmployeeArch empArch = new EmployeeArch(empId, e.getEmail(), e.getName(), e.getDepartment(), e.getRole(), e.getLevel(),
                         e.getTotalExperience(), e.getPastOrganization(), e.getLabAllocation(), e.getComplainceDay(),
                         e.getDate(), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
             employeeArchRepository.save(empArch);
@@ -829,9 +829,23 @@ public class EmployeeService {
                         .collect(Collectors.toList());
                 tqIds = tqArchList.stream().map(TaskQuestionsArch::getId).toList();
                 taskQuestionArchRepository.saveAll(tqArchList);
-                EmployeeFeedback ef = employeeFeedbackRepository.findByEmployeeIdId(empId).orElse(null);
-                EmployeeFeedbackArch eAf = new EmployeeFeedbackArch(ef.getId(),!CommonUtls.isCompletlyEmpty(ef.getStar())?ef.getStar():null ,ef.getFeedback(),"Y",taskArch,empArch,new Date());
-                employeeFeedbackArchRepository.save(eAf);
+                List<EmployeeFeedback> ef = employeeFeedbackRepository.findByEmployeeIdIdAndTaskId(empId,t);
+                List<EmployeeFeedbackArch> efarchList = ef.stream()
+                        .filter(Objects::nonNull)
+                        .map(tq -> {
+                            EmployeeFeedbackArch a = new EmployeeFeedbackArch();
+                            a.setId(tq.getId());
+                            a.setStar(tq.getStar());
+                            a.setFeedback(tq.getFeedback());
+                            a.setEmployeeId(empArch);
+                            a.setTaskId(taskArch);
+                            a.setCreatedTime(new Date());
+                            a.setCompleted("Y");
+                            return a;
+                        })
+                        .collect(Collectors.toList());
+                efIds.addAll(ef.stream().map(EmployeeFeedback::getId).toList());
+                employeeFeedbackArchRepository.saveAll(efarchList);
             }
             List<EmployeeQuestions> eq = employeeQuestionRepository.findAllByEmployeeIdIdOrderByCreatedTimeDesc(empId);
             List<EmployeeQuestionsArch> eqArchList = eq.stream()
@@ -851,7 +865,7 @@ public class EmployeeService {
 
 
             employeeQuestionRepository.deleteAllById(eq.stream().map(EmployeeQuestions::getId).collect(Collectors.toList()));
-            employeeFeedbackRepository.deleteAllByEmployeeIdId(empId);
+            employeeFeedbackRepository.deleteAllById(efIds);
             taskQuestionRepository.deleteAllById(tqIds);
             taskRepository.deleteAllById(tasks.stream().map(Task::getId).collect(Collectors.toList()));
             employeeRepositrory.deleteById(empId);
@@ -859,7 +873,6 @@ public class EmployeeService {
         }catch(Exception e){
             mailerService.sendEmailOnException(e);
         }
-        return true;
     }
 
 

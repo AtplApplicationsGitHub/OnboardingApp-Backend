@@ -1,14 +1,15 @@
 package com.empOnboarding.api.service;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import com.empOnboarding.api.dto.DropDownDTO;
-import com.empOnboarding.api.dto.GroupsDTO;
 import com.empOnboarding.api.dto.LocationDTO;
+import com.empOnboarding.api.dto.Multiselect;
 import com.empOnboarding.api.entity.*;
+import com.empOnboarding.api.repository.LabLocationRepository;
 import com.empOnboarding.api.repository.LocationRepository;
+import com.empOnboarding.api.repository.LookupItemsRepository;
 import com.empOnboarding.api.security.UserPrincipal;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
@@ -30,14 +31,21 @@ public class LocationService {
 
     private final ConstantRepository constantRepository;
 
+    private final LookupItemsRepository lookupItemsRepository;
+
+    private final LabLocationRepository labLocationRepository;
+
     private final MailerService mailerService;
 
     public LocationService(LocationRepository locationRepository,AuditTrailService auditTrailService,
-                           ConstantRepository constantRepository,MailerService mailerService){
+                           ConstantRepository constantRepository,MailerService mailerService,
+                           LookupItemsRepository lookupItemsRepository,LabLocationRepository labLocationRepository){
         this.locationRepository = locationRepository;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
         this.mailerService = mailerService;
+        this.lookupItemsRepository = lookupItemsRepository;
+        this.labLocationRepository = labLocationRepository;
     }
 
     public Boolean createLocation(LocationDTO lDto, CommonDTO dto, UserPrincipal user) {
@@ -105,5 +113,74 @@ public class LocationService {
                 .collect(Collectors.toList());
         return dto;
     }
+
+    public List<DropDownDTO> department(){
+        List<LookupItems> li = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Department");
+        List<String> loc =  locationRepository.findAllDistinctLocation();
+        return li.stream()
+                .filter(l -> {
+                    String key = l.getKey();
+                    return key == null || !loc.contains(key);
+                })
+                .map(l -> new DropDownDTO(l.getId(), l.getValue()))
+                .toList();
+    }
+
+    public void labinlineSave(Long id, Multiselect multiselectDTO, CommonDTO dto) {
+        Optional<Location> loc = locationRepository.findById(id);
+        Set<LabLocation> labLoc = new HashSet<>();
+        loc.ifPresent(lab -> {
+            List<String> checkList = multiselectDTO.getMultiselect().isEmpty() ? new ArrayList<>()
+                    : new ArrayList<>(multiselectDTO.getMultiselect());
+            List<String> existingItem = new ArrayList<>();
+            for (LabLocation item : lab.getLab()) {
+                existingItem.add(item.getLab());
+            }
+            List<String> removed = new ArrayList<>(existingItem);
+            removed.removeAll(checkList);
+
+            List<String> added = new ArrayList<>(checkList);
+            added.removeAll(existingItem);
+
+            if (!removed.isEmpty() || !added.isEmpty()) {
+                String message = buildMessage(added, removed, Constants.LAB_ADDED, Constants.LAB_REMOVED);
+                dto.setSystemRemarks(message);
+                dto.setModule(Constants.DEPARTMENT);
+                dto.setModuleId(String.valueOf(lab.getLocation()));
+                auditTrailService.saveAuditTrail(Constants.DATA_UPDATE.getValue(), dto);
+            }
+            if (multiselectDTO.getMultiselect() != null) {
+                for (String item : multiselectDTO.getMultiselect()) {
+                    try {
+                        labLoc.add(new LabLocation(null, item, loc.get()));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            labLocationRepository.deleteAllInBatch(lab.getLab());
+            lab.getLab().clear();
+            lab.setLab(labLoc);
+            locationRepository.save(lab);
+        });
+    }
+        private String buildMessage(List<String> addedDietItems, List<String> removedDietItems, String added,
+                String removed) {
+            StringBuilder messageBuilder = new StringBuilder();
+
+            if (!addedDietItems.isEmpty()) {
+                messageBuilder.append(added).append(addedDietItems).append(" ");
+            }
+
+            if (!addedDietItems.isEmpty() && !removedDietItems.isEmpty()) {
+                messageBuilder.append(Constants.AUDIT_DELIMITER);
+            }
+
+            if (!removedDietItems.isEmpty()) {
+                messageBuilder.append(removed).append(removedDietItems).append(" ");
+            }
+
+            return messageBuilder.toString().trim();
+        }
 
 }

@@ -15,13 +15,18 @@ public enum Constants {
 	public static final String GROUPS = "Groups";
 	public static final String QUESTIONS = "Questions";
 	public static final String EMPLOYEE = "Employee";
+	public static final String DEPARTMENT = "Department";
 	public static final String LAB = "Lab";
 	public static final String ADD_EMPLOYEE = "Add Employee";
 	public static final String AUDIT_ADD_DELIMITER = "[added]<#emp#>";
 	public static final String AUDIT_REMOVE_DELIMITER = "[removed]<#emp#>";
 	public static final String LOOKUP_CATEGORY = "LookUp Category";
 	public static final String LOOKUP_ITEMS = "LookUp Items";
-	
+	public static final String LAB_ADDED = "The following Labs were added: ";
+	public static final String LAB_REMOVED = "The following Labs were removed: ";
+
+
+
 
 
 	private String value;
