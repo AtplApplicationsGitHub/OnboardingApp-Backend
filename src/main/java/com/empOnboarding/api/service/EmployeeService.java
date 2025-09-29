@@ -892,7 +892,7 @@ public class EmployeeService {
     private void sendWelcomeMail(final EmployeeDTO dto) {
         CompletableFuture.runAsync(() -> {
             try {
-                InputStream inputStream2 = new ClassPathResource("EmailTemplates/user_management_template.html")
+                InputStream inputStream2 = new ClassPathResource("EmailTemplates/WelcomeUser.html")
                         .getInputStream();
                 BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
                 String emailBody;
