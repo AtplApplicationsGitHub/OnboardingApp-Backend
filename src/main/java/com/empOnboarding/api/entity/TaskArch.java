@@ -36,7 +36,7 @@ public class TaskArch {
     @JoinColumn(name = "assigned_to", referencedColumnName = "id")
     private Users assignedTo;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "taskId", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "taskId", cascade = CascadeType.ALL)
     private Set<TaskQuestionsArch> taskQuestions = new HashSet<>(0);
 
     @Temporal(TemporalType.TIMESTAMP)

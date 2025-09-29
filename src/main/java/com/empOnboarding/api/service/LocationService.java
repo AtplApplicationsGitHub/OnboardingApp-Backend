@@ -122,7 +122,7 @@ public class LocationService {
                     String key = l.getKey();
                     return key == null || !loc.contains(key);
                 })
-                .map(l -> new DropDownDTO(l.getId(), l.getValue()))
+                .map(l -> new DropDownDTO(l.getId(), l.getValue(),l.getValue()))
                 .toList();
     }
 

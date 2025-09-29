@@ -231,6 +231,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       WHERE (e."name" ILIKE CONCAT('%', :keyword, '%') OR
       e.department ILIKE CONCAT('%', :keyword, '%') OR e."role" ILIKE CONCAT('%', :keyword, '%') OR
       e."level" ILIKE CONCAT('%', :keyword, '%'))
+      AND UPPER(COALESCE(t.freeze_task, 'N')) = 'N'
     )
     SELECT
       r.employeeId                               AS employeeId,
@@ -286,6 +287,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       WHERE (e."name" ILIKE CONCAT('%', :keyword, '%') OR
       e.department ILIKE CONCAT('%', :keyword, '%') OR e."role" ILIKE CONCAT('%', :keyword, '%') OR
       e."level" ILIKE CONCAT('%', :keyword, '%'))
+      AND UPPER(COALESCE(t.freeze_task, 'N')) = 'N'
     )
     SELECT COUNT(*) FROM (
       SELECT 1
@@ -327,6 +329,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       WHERE (e."name" ILIKE CONCAT('%', :keyword, '%') OR
       e.department ILIKE CONCAT('%', :keyword, '%') OR e."role" ILIKE CONCAT('%', :keyword, '%') OR
       e."level" ILIKE CONCAT('%', :keyword, '%'))
+      AND UPPER(COALESCE(t.freeze_task, 'N')) = 'N'
     )
     SELECT
       r.employeeId                               AS employeeId,
@@ -382,6 +385,7 @@ public interface TaskRepository extends JpaRepository<Task, String> {
       WHERE (e."name" ILIKE CONCAT('%', :keyword, '%') OR
       e.department ILIKE CONCAT('%', :keyword, '%') OR e."role" ILIKE CONCAT('%', :keyword, '%') OR
       e."level" ILIKE CONCAT('%', :keyword, '%'))
+      AND UPPER(COALESCE(t.freeze_task, 'N')) = 'N'
     )
     SELECT COUNT(*) FROM (
       SELECT 1
