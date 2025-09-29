@@ -42,7 +42,7 @@ public class Location implements java.io.Serializable {
 	@Column(name = "department")
 	private String location;
 	
-	@OneToMany(fetch = FetchType.LAZY, mappedBy = "location", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(fetch = FetchType.LAZY, mappedBy = "location", cascade = CascadeType.ALL)
 	private Set<LabLocation> lab = new HashSet<>(0);
 
 	@Temporal(TemporalType.TIMESTAMP)
