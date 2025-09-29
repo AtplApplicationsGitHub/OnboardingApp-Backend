@@ -31,8 +31,7 @@ public class EmployeeArch implements java.io.Serializable {
 
 	private static final long serialVersionUID = 1L;
 	@Id
-	@GeneratedValue(strategy = IDENTITY)
-	@Column(name = "id", unique = true, nullable = false)
+	@Column(name = "id")
 	private Long id;
 
 	@Column(name = "email")
