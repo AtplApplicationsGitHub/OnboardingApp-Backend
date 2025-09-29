@@ -25,6 +25,10 @@ public enum Constants {
 	public static final String LAB_ADDED = "The following Labs were added: ";
 	public static final String LAB_REMOVED = "The following Labs were removed: ";
 
+//	Mail Subjects
+
+	public static final String WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE = "Welcome to Sailife – Your Onboarding Checklist Awaits!";
+
 
 
 
