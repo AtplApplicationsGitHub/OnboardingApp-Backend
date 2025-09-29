@@ -825,7 +825,7 @@ public class EmployeeService {
                         e.getDate(), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
             employeeArchRepository.save(empArch);
             for(Task t :tasks){
-                TaskArch taskArch = new TaskArch(t.getId(),empArch,t.getGroupId(),t.getAssignedTo(),null,
+                TaskArch taskArch = new TaskArch(nextId(),empArch,t.getGroupId(),t.getAssignedTo(),null,
                         t.getUpdatedTime(),t.getCreatedTime(),new Users(user.getId()), t.getCreatedBy(), t.getFreezeTask());
                 taskArchRepository.save(taskArch);
                 List<TaskQuestionsArch> tqArchList = t.getTaskQuestions().stream()
@@ -902,7 +902,7 @@ public class EmployeeService {
                 }
                 emailBody = stringBuilder.toString();
                 emailBody = emailBody.replaceFirst("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
-                emailBody = emailBody.replaceFirst("@email",dto.getEmail());
+                emailBody = emailBody.replaceFirst("@email", dto.getEmail());
                 EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE,
                         dto.getEmail().split(","), null, null, emailBody);
                 mailerService.sendHTMLMail(emailDetailsDTO);
@@ -910,9 +910,19 @@ public class EmployeeService {
             }
         });
     }
-
-
-
-
-
-}
+        @Transactional(readOnly = true)
+        public String nextId() {
+            LocalDate now = LocalDate.now();
+            String mm = String.format("%02d", now.getMonthValue());
+            String yy = String.format("%02d", now.getYear() % 100);
+            String prefix = "T" + mm + yy;
+            TaskArch last = taskArchRepository.findTopByIdStartingWithOrderByIdDesc(prefix);
+            int nextSeq = 1;
+            if (last != null) {
+                String lastId = last.getId();
+                String seqStr = lastId.substring(prefix.length());
+                nextSeq = Integer.parseInt(seqStr) + 1;
+            }
+            return String.format("%s%05d", prefix, nextSeq);
+        }
+    }
