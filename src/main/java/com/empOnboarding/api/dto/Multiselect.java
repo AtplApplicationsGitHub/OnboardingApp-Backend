@@ -15,6 +15,6 @@ import lombok.Setter;
 @Generated
 public class Multiselect {
 	
-	private List<String> multiselect;
+	private List<String> lab;
 
 }

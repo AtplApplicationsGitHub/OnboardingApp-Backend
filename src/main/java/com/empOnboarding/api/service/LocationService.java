@@ -130,8 +130,8 @@ public class LocationService {
         Optional<Location> loc = locationRepository.findById(id);
         Set<LabLocation> labLoc = new HashSet<>();
         loc.ifPresent(lab -> {
-            List<String> checkList = multiselectDTO.getMultiselect().isEmpty() ? new ArrayList<>()
-                    : new ArrayList<>(multiselectDTO.getMultiselect());
+            List<String> checkList = multiselectDTO.getLab().isEmpty() ? new ArrayList<>()
+                    : new ArrayList<>(multiselectDTO.getLab());
             List<String> existingItem = new ArrayList<>();
             for (LabLocation item : lab.getLab()) {
                 existingItem.add(item.getLab());
@@ -149,8 +149,8 @@ public class LocationService {
                 dto.setModuleId(String.valueOf(lab.getLocation()));
                 auditTrailService.saveAuditTrail(Constants.DATA_UPDATE.getValue(), dto);
             }
-            if (multiselectDTO.getMultiselect() != null) {
-                for (String item : multiselectDTO.getMultiselect()) {
+            if (multiselectDTO.getLab() != null) {
+                for (String item : multiselectDTO.getLab()) {
                     try {
                         labLoc.add(new LabLocation(null, item, loc.get()));
                     } catch (Exception e) {
