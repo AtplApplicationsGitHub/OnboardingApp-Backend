@@ -154,6 +154,10 @@ public class EmployeeService {
         eDto.setCreatedTime(CommonUtls.datetoString(emp.getCreatedTime(), c.getConstantValue()));
         eDto.setUpdatedTime(CommonUtls.datetoString(emp.getUpdatedTime(), c.getConstantValue()));
         eDto.setDeleteFlag(!taskRepository.existsByEmployeeId(emp));
+        Boolean archive = taskRepository.findAllByEmployeeIdId(emp.getId())
+                .stream()
+                .allMatch(t -> "Y".equalsIgnoreCase(t.getFreezeTask()));
+        eDto.setArchiveFlag(archive);
         return eDto;
     }
 
