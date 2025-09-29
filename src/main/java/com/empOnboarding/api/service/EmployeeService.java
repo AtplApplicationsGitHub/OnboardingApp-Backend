@@ -1,10 +1,14 @@
 package com.empOnboarding.api.service;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import com.empOnboarding.api.dto.*;
@@ -19,6 +23,7 @@ import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.*;
 import org.json.JSONArray;
 import org.json.simple.JSONObject;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -100,6 +105,10 @@ public class EmployeeService {
         eDto.add(emp);
         taskService.createTask(eDto, user);
         employeeQuestionService.createEmployeeQuestion(emp.getLevel(),emp.getId());
+        try {
+            sendWelcomeMail(empDto);
+        } catch (Exception ignored) {
+        }
         dto.setSystemRemarks(emp.toString());
         dto.setModuleId(emp.getName());
         auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
@@ -877,6 +886,29 @@ public class EmployeeService {
         }catch(Exception e){
             mailerService.sendEmailOnException(e);
         }
+    }
+
+
+    private void sendWelcomeMail(final EmployeeDTO dto) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                InputStream inputStream2 = new ClassPathResource("EmailTemplates/user_management_template.html")
+                        .getInputStream();
+                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
+                String emailBody;
+                StringBuilder stringBuilder = new StringBuilder();
+                while ((emailBody = br.readLine()) != null) {
+                    stringBuilder.append(emailBody);
+                }
+                emailBody = stringBuilder.toString();
+                emailBody = emailBody.replaceFirst("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
+                emailBody = emailBody.replaceFirst("@email",dto.getEmail());
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE,
+                        dto.getEmail().split(","), null, null, emailBody);
+                mailerService.sendHTMLMail(emailDetailsDTO);
+            } catch (Exception ignored) {
+            }
+        });
     }
 
 
