@@ -24,7 +24,7 @@ import com.empOnboarding.api.utils.Constants;
 
 @Service
 public class UserManagementService {
-	private UsersRepository usersRepository;
+	private final UsersRepository usersRepository;
 
 	private AuditTrailService auditTrailService;
 
