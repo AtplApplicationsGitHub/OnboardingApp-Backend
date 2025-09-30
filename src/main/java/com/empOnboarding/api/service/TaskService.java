@@ -35,6 +35,8 @@ public class TaskService {
 
     private final EmployeeFeedbackRepository employeeFeedbackRepository;
 
+    private final EmployeeFeedbackArchRepository employeeFeedbackArchRepository;
+
     private final EmployeeRepository employeeRepository;
 
     private final TaskArchRepository taskArchRepository;
@@ -44,7 +46,7 @@ public class TaskService {
     public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository,UsersRepository usersRepository, QuestionRepository questionRepository,
                        ConstantRepository constantRepository,GroupRepository groupRepository,
                        EmployeeFeedbackRepository employeeFeedbackRepository,EmployeeRepository employeeRepository,
-                       TaskArchRepository taskArchRepository, AuditTrailService auditTrailService) {
+                       TaskArchRepository taskArchRepository, AuditTrailService auditTrailService,EmployeeFeedbackArchRepository employeeFeedbackArchRepository) {
         this.taskRepository = taskRepository;
         this.usersRepository = usersRepository;
         this.questionRepository = questionRepository;
@@ -55,6 +57,7 @@ public class TaskService {
         this.employeeRepository = employeeRepository;
         this.auditTrailService = auditTrailService;
         this.taskArchRepository = taskArchRepository;
+        this.employeeFeedbackArchRepository = employeeFeedbackArchRepository;
     }
 
     @Transactional
@@ -255,7 +258,7 @@ public class TaskService {
     public TaskDTO populateTaskArch(TaskArch task) {
         TaskDTO tDto = new TaskDTO();
         Constant c = constantRepository.findByConstant("DateFormat");
-        Optional<EmployeeFeedback> ef = employeeFeedbackRepository.findByTaskIdId(task.getId());
+        Optional<EmployeeFeedbackArch> ef = employeeFeedbackArchRepository.findByTaskIdId(task.getId());
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
         EmployeeArch e = task.getEmployeeId();
         tDto.setId(task.getId());
