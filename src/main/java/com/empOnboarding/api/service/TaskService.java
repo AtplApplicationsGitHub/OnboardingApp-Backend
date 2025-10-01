@@ -1,14 +1,20 @@
 package com.empOnboarding.api.service;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import com.empOnboarding.api.dto.*;
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.*;
+import com.empOnboarding.api.utils.Constants;
 import org.json.simple.JSONObject;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -43,10 +49,13 @@ public class TaskService {
 
     private final AuditTrailService auditTrailService;
 
+    private final MailerService mailerService;
+
     public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository,UsersRepository usersRepository, QuestionRepository questionRepository,
                        ConstantRepository constantRepository,GroupRepository groupRepository,
                        EmployeeFeedbackRepository employeeFeedbackRepository,EmployeeRepository employeeRepository,
-                       TaskArchRepository taskArchRepository, AuditTrailService auditTrailService,EmployeeFeedbackArchRepository employeeFeedbackArchRepository) {
+                       TaskArchRepository taskArchRepository, AuditTrailService auditTrailService,EmployeeFeedbackArchRepository employeeFeedbackArchRepository,
+                       MailerService mailerService) {
         this.taskRepository = taskRepository;
         this.usersRepository = usersRepository;
         this.questionRepository = questionRepository;
@@ -58,6 +67,7 @@ public class TaskService {
         this.auditTrailService = auditTrailService;
         this.taskArchRepository = taskArchRepository;
         this.employeeFeedbackArchRepository = employeeFeedbackArchRepository;
+        this.mailerService = mailerService;
     }
 
     @Transactional
@@ -123,6 +133,10 @@ public class TaskService {
                     }
 
                     task.getTaskQuestions().add(tq);
+                }
+                try {
+                    sendTaskAssign(task);
+                } catch (Exception ignored) {
                 }
                 taskRepository.save(task);
             }
@@ -306,7 +320,6 @@ public class TaskService {
         dto.setId(taskQuestions.getId().toString());
         
         try {
-            // Check if the question exists and is accessible
             Questions question = taskQuestions.getQuestionId();
             if (question != null) {
                 dto.setQuestionId(question.getText());
@@ -464,7 +477,7 @@ public class TaskService {
         List<Task> tasks = taskRepository.findAllByAssignedToId(user.getId());
 
         long distinctEmployeeCount = tasks.stream()
-                .map(Task::getEmployeeId)                 // If this returns Employee, use .map(t -> t.getEmployeeId().getId())
+                .map(Task::getEmployeeId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .count();
@@ -620,6 +633,10 @@ public class TaskService {
                 task.getTaskQuestions().add(tq);
             }
             taskRepository.save(task);
+            try{
+                sendTaskAssign(task);
+            }catch(Exception ignored){
+            }
         }
         if (dto != null) {
             dto.setModuleId("NA");
@@ -627,6 +644,112 @@ public class TaskService {
             auditTrailService.saveAuditTrail("DATA_CREATE", dto);
         }
     }
+
+    private void sendTaskAssign(final Task t) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                InputStream inputStream2 = new ClassPathResource("EmailTemplates/TaskAssign.html")
+                        .getInputStream();
+                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
+                String emailBody;
+                StringBuilder stringBuilder = new StringBuilder();
+                while ((emailBody = br.readLine()) != null) {
+                    stringBuilder.append(emailBody);
+                }
+                emailBody = stringBuilder.toString();
+                emailBody = emailBody.replaceFirst("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
+//                emailBody = emailBody.replaceFirst("@email", dto.getEmail());
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE,
+                        t.getGroupId().getPgLead().getEmail().split(","), null, null, emailBody);
+                mailerService.sendHTMLMail(emailDetailsDTO);
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    private void sendTaskReAssign(final Task t) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                InputStream inputStream2 = new ClassPathResource("EmailTemplates/ReassignTask.html")
+                        .getInputStream();
+                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
+                String emailBody;
+                StringBuilder stringBuilder = new StringBuilder();
+                while ((emailBody = br.readLine()) != null) {
+                    stringBuilder.append(emailBody);
+                }
+                emailBody = stringBuilder.toString();
+                emailBody = emailBody.replaceFirst("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
+//                emailBody = emailBody.replaceFirst("@email", dto.getEmail());
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE,
+                        t.getGroupId().getPgLead().getEmail().split(","), null, null, emailBody);
+                mailerService.sendHTMLMail(emailDetailsDTO);
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    public void taskReminder() {
+        final LocalDate todayPlusOne = LocalDate.now().plusDays(1);
+        final List<Task> tasks = taskRepository.findAllByFreezeTask("N");
+        final Map<Users, List<Task>> tasksByPgLead = tasks.stream()
+                .filter(t -> t != null
+                        && t.getGroupId() != null
+                        && t.getGroupId().getPgLead() != null)
+                .collect(Collectors.groupingBy(t -> t.getGroupId().getPgLead()));
+        for (Map.Entry<Users, List<Task>> entry : tasksByPgLead.entrySet()) {
+            final Users pgLead = entry.getKey();
+            final List<Task> taskList = entry.getValue();
+            final List<Task> pendingForLead = new ArrayList<>();
+            for (Task task : taskList) {
+                if (task == null || task.getEmployeeId() == null) continue;
+                final LocalDate doj = task.getEmployeeId().getDate();
+                if (doj == null) continue;
+                final Collection<TaskQuestions> tqs = task.getTaskQuestions();
+                if (tqs == null || tqs.isEmpty()) continue;
+                boolean added = false;
+                for (TaskQuestions tq : tqs) {
+                    if (tq == null) continue;
+                    if ("Completed".equals(tq.getStatus())) continue;
+                    final LocalDate due = computeDue(doj, tq);
+                    if (due != null && due.isEqual(todayPlusOne)) {
+                        pendingForLead.add(task);
+                        added = true;
+                        break;
+                    }
+                }
+                if (added) {
+                   break;
+                }
+            }
+            if (!pendingForLead.isEmpty()) {
+                sendTaskIncompleteReminder(pgLead, pendingForLead);
+            }
+        }
+    }
+
+    private void sendTaskIncompleteReminder(final Users u,final List<Task> t) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                InputStream inputStream2 = new ClassPathResource("EmailTemplates/TaskInCompleteReminder.html")
+                        .getInputStream();
+                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
+                String emailBody;
+                StringBuilder stringBuilder = new StringBuilder();
+                while ((emailBody = br.readLine()) != null) {
+                    stringBuilder.append(emailBody);
+                }
+                emailBody = stringBuilder.toString();
+                emailBody = emailBody.replaceFirst("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
+//                emailBody = emailBody.replaceFirst("@email", dto.getEmail());
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE,
+                       u.getEmail().split(","), null, null, emailBody);
+                mailerService.sendHTMLMail(emailDetailsDTO);
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
 
 
 }
