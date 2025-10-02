@@ -53,4 +53,9 @@ public class EmployeeQuestionController {
         return employeeQuestionService.getEmployeesWithQuestions();
     }
 
+    @GetMapping("/employeesArchWithQuestions")
+    public List<Long> getEmployeesArchWithQuestions() {
+        return employeeQuestionService.getEmployeesArchWithQuestions();
+    }
+
 }

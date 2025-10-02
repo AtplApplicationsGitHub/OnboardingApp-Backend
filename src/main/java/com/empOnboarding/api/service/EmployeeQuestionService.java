@@ -5,10 +5,7 @@ import com.empOnboarding.api.entity.EQuestions;
 import com.empOnboarding.api.entity.Employee;
 import com.empOnboarding.api.entity.EmployeeQuestions;
 import com.empOnboarding.api.entity.Task;
-import com.empOnboarding.api.repository.EQuestionsRepository;
-import com.empOnboarding.api.repository.EmployeeQuestionRepository;
-import com.empOnboarding.api.repository.EmployeeRepository;
-import com.empOnboarding.api.repository.TaskRepository;
+import com.empOnboarding.api.repository.*;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,12 +28,16 @@ public class EmployeeQuestionService {
 
     private final TaskRepository taskRepository;
 
+    private final EmployeeArchQuestionRepository employeeArchQuestionRepository;
+
     public EmployeeQuestionService(EmployeeQuestionRepository employeeQuestionRepository,EQuestionsRepository eQuestionsRepository,
-                                   EmployeeRepository employeeRepository, TaskRepository taskRepository){
+                                   EmployeeRepository employeeRepository, TaskRepository taskRepository,
+                                   EmployeeArchQuestionRepository employeeArchQuestionRepository){
         this.employeeQuestionRepository = employeeQuestionRepository;
         this.eQuestionsRepository = eQuestionsRepository;
         this.employeeRepository = employeeRepository;
         this.taskRepository = taskRepository;
+        this.employeeArchQuestionRepository = employeeArchQuestionRepository;
     }
 
     public Boolean createAnswer(Long id, String response){
@@ -111,6 +112,10 @@ public class EmployeeQuestionService {
 
     public List<Long> getEmployeesWithQuestions() {
         return employeeQuestionRepository.findDistinctEmployeeIds();
+    }
+
+    public List<Long> getEmployeesArchWithQuestions() {
+        return employeeArchQuestionRepository.findDistinctEmployeeIds();
     }
 
 }
