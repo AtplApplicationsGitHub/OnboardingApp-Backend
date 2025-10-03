@@ -10,4 +10,5 @@ public interface EmployeeArchQuestionRepository extends JpaRepository<EmployeeQu
     @Query("SELECT DISTINCT eq.employeeId.id FROM EmployeeQuestionsArch eq")
     List<Long> findDistinctEmployeeIds();
 
+    List<EmployeeQuestionsArch> findAllByEmployeeIdIdOrderByCreatedTimeDesc(Long employeeId);
 }

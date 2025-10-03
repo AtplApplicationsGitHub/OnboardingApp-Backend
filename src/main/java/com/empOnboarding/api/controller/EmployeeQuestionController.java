@@ -48,6 +48,11 @@ public class EmployeeQuestionController {
         return employeeQuestionService.getEmployeeQuestionsByTask(taskId);
     }
 
+    @GetMapping("/getByTaskArchId/{taskId}")
+    public List<EmployeeQuestionDTO> getEmployeeQuestionsArchByTask(@PathVariable String taskId) {
+        return employeeQuestionService.getEmployeeArchQuestionsByTask(taskId);
+    }
+
     @GetMapping("/employeesWithQuestions")
     public List<Long> getEmployeesWithQuestions() {
         return employeeQuestionService.getEmployeesWithQuestions();
