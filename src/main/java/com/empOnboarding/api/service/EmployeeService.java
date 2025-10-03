@@ -107,7 +107,8 @@ public class EmployeeService {
         employeeQuestionService.createEmployeeQuestion(emp.getLevel(),emp.getId());
         try {
             sendWelcomeMail(empDto);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            mailerService.sendEmailOnException(e);
         }
         dto.setSystemRemarks(emp.toString());
         dto.setModuleId(emp.getName());
