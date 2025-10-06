@@ -443,8 +443,13 @@ public class TaskService {
         boolean result = false;
         if (t.isPresent()){
             Task task = t.get();
+            String oldAssigned = task.getAssignedTo().getName();
             task.setAssignedTo(new Users(id));
             taskRepository.save(task);
+            try{
+                sendTaskReAssign(task,oldAssigned);
+            } catch (Exception ignored) {
+            }
             result = true;
         }
         return result;
@@ -648,6 +653,7 @@ public class TaskService {
     private void sendTaskAssign(final Task t) {
         CompletableFuture.runAsync(() -> {
             try {
+                Constant c = constantRepository.findByConstant("TaskPageGL");
                 InputStream inputStream2 = new ClassPathResource("EmailTemplates/TaskAssign.html")
                         .getInputStream();
                 BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
@@ -657,9 +663,22 @@ public class TaskService {
                     stringBuilder.append(emailBody);
                 }
                 emailBody = stringBuilder.toString();
-                emailBody = emailBody.replaceFirst("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
-//                emailBody = emailBody.replaceFirst("@email", dto.getEmail());
-                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE,
+                emailBody = emailBody.replaceFirst("@src", Constants.TASK_ASSIGN);
+                emailBody = emailBody.replaceFirst("@name", t.getGroupId().getPgLead().getName());
+                emailBody = emailBody.replaceFirst("@taskId", t.getId());
+                emailBody = emailBody.replaceFirst("@employeeName", t.getEmployeeId().getName());
+                emailBody = emailBody.replaceFirst("@groupId", t.getGroupId().getName());
+                emailBody = emailBody.replaceFirst("@taskUrl", c.getConstantValue());
+                long totalQuestion = t.getTaskQuestions().size();
+                long pendingCount = t.getTaskQuestions().stream()
+                        .filter(q -> "pending".equalsIgnoreCase(q.getStatus()))
+                        .count();
+                long completedCount = totalQuestion-pendingCount;
+                emailBody = emailBody.replaceFirst("@totalQuestion", String.valueOf(totalQuestion));
+                emailBody = emailBody.replaceFirst("@pendingQuestion",  String.valueOf(pendingCount));
+                emailBody = emailBody.replaceFirst("@completedQuestion", String.valueOf(completedCount));
+
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.TASK_ASSIGN,
                         t.getGroupId().getPgLead().getEmail().split(","), null, null, emailBody);
                 mailerService.sendHTMLMail(emailDetailsDTO);
             } catch (Exception ignored) {
@@ -667,9 +686,10 @@ public class TaskService {
         });
     }
 
-    private void sendTaskReAssign(final Task t) {
+    private void sendTaskReAssign(final Task t,final String oldAssigned) {
         CompletableFuture.runAsync(() -> {
             try {
+                Constant c = constantRepository.findByConstant("TaskPageGL");
                 InputStream inputStream2 = new ClassPathResource("EmailTemplates/ReassignTask.html")
                         .getInputStream();
                 BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
@@ -679,9 +699,23 @@ public class TaskService {
                     stringBuilder.append(emailBody);
                 }
                 emailBody = stringBuilder.toString();
-                emailBody = emailBody.replaceFirst("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
-//                emailBody = emailBody.replaceFirst("@email", dto.getEmail());
-                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE,
+                emailBody = emailBody.replaceFirst("@src", Constants.TASK_REASSIGN);
+                emailBody = emailBody.replaceFirst("@name", t.getGroupId().getPgLead().getName());
+                emailBody = emailBody.replaceFirst("@fromUser", oldAssigned);
+                emailBody = emailBody.replaceFirst("@taskId", t.getId());
+                emailBody = emailBody.replaceFirst("@employeeName", t.getEmployeeId().getName());
+                emailBody = emailBody.replaceFirst("@groupId", t.getGroupId().getName());
+                emailBody = emailBody.replaceFirst("@taskUrl", c.getConstantValue());
+                long totalQuestion = t.getTaskQuestions().size();
+                long pendingCount = t.getTaskQuestions().stream()
+                        .filter(q -> "pending".equalsIgnoreCase(q.getStatus()))
+                        .count();
+                long completedCount = totalQuestion-pendingCount;
+                emailBody = emailBody.replaceFirst("@totalQuestion", String.valueOf(totalQuestion));
+                emailBody = emailBody.replaceFirst("@pendingQuestion",  String.valueOf(pendingCount));
+                emailBody = emailBody.replaceFirst("@completedQuestion", String.valueOf(completedCount));
+
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.TASK_REASSIGN,
                         t.getGroupId().getPgLead().getEmail().split(","), null, null, emailBody);
                 mailerService.sendHTMLMail(emailDetailsDTO);
             } catch (Exception ignored) {
