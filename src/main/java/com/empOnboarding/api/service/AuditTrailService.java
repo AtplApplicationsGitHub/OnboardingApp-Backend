@@ -285,5 +285,9 @@ public class AuditTrailService {
 		json.put("commonListDto", pageList);
 		return json;
 	}
+
+	public void deleteAudits(){
+
+	}
 	
 }

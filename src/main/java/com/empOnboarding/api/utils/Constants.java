@@ -27,7 +27,10 @@ public enum Constants {
 
 //	Mail Subjects
 
-	public static final String WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE = "Welcome to Sailife – Your Onboarding Checklist Awaits!";
+	public static final String WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE = "Welcome to Sailife";
+	public static final String TASK_ASSIGN = "New Task Assigned";
+	public static final String TASK_REASSIGN = "Task Reassigned";
+
 
 
 

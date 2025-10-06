@@ -1,10 +1,7 @@
 package com.empOnboarding.api.service;
 
 import com.empOnboarding.api.dto.EmployeeQuestionDTO;
-import com.empOnboarding.api.entity.EQuestions;
-import com.empOnboarding.api.entity.Employee;
-import com.empOnboarding.api.entity.EmployeeQuestions;
-import com.empOnboarding.api.entity.Task;
+import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.*;
 import org.json.simple.JSONObject;
 import org.springframework.data.domain.Page;
@@ -28,15 +25,18 @@ public class EmployeeQuestionService {
 
     private final TaskRepository taskRepository;
 
+    private final TaskArchRepository taskArchRepository;
+
     private final EmployeeArchQuestionRepository employeeArchQuestionRepository;
 
     public EmployeeQuestionService(EmployeeQuestionRepository employeeQuestionRepository,EQuestionsRepository eQuestionsRepository,
-                                   EmployeeRepository employeeRepository, TaskRepository taskRepository,
+                                   EmployeeRepository employeeRepository, TaskRepository taskRepository,TaskArchRepository taskArchRepository,
                                    EmployeeArchQuestionRepository employeeArchQuestionRepository){
         this.employeeQuestionRepository = employeeQuestionRepository;
         this.eQuestionsRepository = eQuestionsRepository;
         this.employeeRepository = employeeRepository;
         this.taskRepository = taskRepository;
+        this.taskArchRepository = taskArchRepository;
         this.employeeArchQuestionRepository = employeeArchQuestionRepository;
     }
 
@@ -77,6 +77,16 @@ public class EmployeeQuestionService {
         return eQDto;
     }
 
+    public EmployeeQuestionDTO populateEmployeeArchDto(EmployeeQuestionsArch eQ){
+        EmployeeQuestionDTO eQDto = new EmployeeQuestionDTO();
+        eQDto.setId(eQ.getId().toString());
+        eQDto.setQuestion(eQ.getQuestionId().getQuestions());
+        eQDto.setResponseType(eQ.getQuestionId().getResponseType());
+        eQDto.setResponse(eQ.getResponse());
+        eQDto.setCompletedFlag(eQ.getCompletedFlag());
+        return eQDto;
+    }
+
     @SuppressWarnings("unchecked")
     public JSONObject filteredEmployeesQuestions(Long id,String pageNo) {
         JSONObject json = new JSONObject();
@@ -94,8 +104,12 @@ public class EmployeeQuestionService {
         return empQuestions.stream().map(this::populateEmployeeDto).collect(Collectors.toList());
     }
 
+    public List<EmployeeQuestionDTO> getAllEmployeeQuestionsArch(Long employeeId) {
+        List<EmployeeQuestionsArch> empQuestions = employeeArchQuestionRepository.findAllByEmployeeIdIdOrderByCreatedTimeDesc(employeeId);
+        return empQuestions.stream().map(this::populateEmployeeArchDto).collect(Collectors.toList());
+    }
+
     public List<EmployeeQuestionDTO> getEmployeeQuestionsByTask(String taskId) {
-        // Get the task to find the associated employee
         Task task = taskRepository.findById(taskId).orElse(null);
         if (task == null || task.getEmployeeId() == null) {
             return new ArrayList<>();
@@ -103,6 +117,16 @@ public class EmployeeQuestionService {
         
         Long employeeId = task.getEmployeeId().getId();
         return getAllEmployeeQuestions(employeeId);
+    }
+
+    public List<EmployeeQuestionDTO> getEmployeeArchQuestionsByTask(String taskId) {
+        TaskArch task = taskArchRepository.findById(taskId).orElse(null);
+        if (task == null || task.getEmployeeId() == null) {
+            return new ArrayList<>();
+        }
+
+        Long employeeId = task.getEmployeeId().getId();
+        return getAllEmployeeQuestionsArch(employeeId);
     }
 
     public boolean hasEmployeeQuestions(Long employeeId) {
