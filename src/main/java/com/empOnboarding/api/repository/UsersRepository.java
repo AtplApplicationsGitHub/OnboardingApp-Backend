@@ -36,4 +36,7 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
 
 	Optional<Users> findByEmail(String email);
 
+    List<Users> findByNameAndActiveFlag(String orgIdOrUserNameOrEmailId, String y);
+
+	List<Users> findByEmailAndActiveFlag(String orgIdOrUserNameOrEmailId, String y);
 }

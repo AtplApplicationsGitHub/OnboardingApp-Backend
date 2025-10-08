@@ -2,9 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Task Reminder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body>
+<body style="margin:0;padding:0;background:#f8f9f9;">
+<!-- Preheader (hidden preview text) -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    Pending onboarding tasks for @employeeName — due in 24 hours.
+</div>
 
+<!-- Outer wrapper -->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f8f9f9;">
+    <tr>
+        <td align="center" style="padding:24px 12px;">
+
+            <!-- Card container -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600"
+                   style="width:600px;max-width:600px;background:#ffffff;border:1px solid #e6e8eb;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Calibri, Arial, sans-serif;">
+                <!-- Header bar -->
+                <tr>
+                    <td align="center" style="padding:24px 24px 0 24px;">
+                        <div style="width:100%; box-shadow:0 4px 8px rgba(0,0,0,0.2); background-color:#f8f9f9; margin:auto;">
+                            <div style="background:#ffffff; margin:0 30px; padding:30px;">
+                                <div style="text-align:center; color:#082654; font-size:20px; line-height:20px;">
+                                    <b>Onboarding Task Reminder</b>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Greeting -->
+                <tr>
+                    <td style="padding:12px 30px 0 30px; color:#1f2937; font-size:15px; line-height:1.6;">
+                        <p style="margin:0 0 10px 0;">Dear <strong>@recipientName</strong>,</p>
+                        <p style="margin:0 0 10px 0;">
+                            This is a gentle reminder that the following onboarding tasks for
+                            <strong>@employeeName</strong> are still pending:
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Pending list (inject <li> items) -->
+                <tr>
+                    <td style="padding:0 30px; color:#111827; font-size:15px; line-height:1.6;">
+                        <ul style="margin:6px 0; padding-left:20px; list-style-type:disc; list-style-position:outside;">
+                            @pendingTasksList
+                        </ul>
+                    </td>
+                </tr>
+
+                <!-- Deadline -->
+                <tr>
+                    <td style="padding:6px 30px 0 30px; color:#1f2937; font-size:15px; line-height:1.6;">
+                        <p style="margin:0 0 10px 0;">Please complete them within the next <strong>24 hours</strong> to avoid delays.</p>
+                    </td>
+                </tr>
+
+                <!-- CTA -->
+                <tr>
+                    <td align="center" style="padding:8px 30px 0 30px;">
+                        <a href="@tasksUrl"
+                           style="display:inline-block;background:#082654;color:#ffffff;text-decoration:none;
+                        font-family:Calibri, Arial, sans-serif;font-size:15px;font-weight:700;
+                        line-height:44px;border-radius:6px;padding:0 20px;min-width:200px;text-align:center;">
+                            Complete Tasks
+                        </a>
+                    </td>
+                </tr>
+
+                <!-- Divider -->
+                <tr>
+                    <td style="padding:16px 30px 0 30px;">
+                        <hr style="border:none;border-top:1px solid #e6e8eb;margin:0;">
+                    </td>
+                </tr>
+
+                <!-- Signature -->
+                <tr>
+                    <td style="padding:12px 30px 24px 30px; color:#1f2937; font-size:15px; line-height:1.6;">
+                        <p style="margin:0 0 4px 0;">Thank you for your attention,</p>
+                        <p style="margin:0;"><strong>Onboarding Team</strong></p>
+                    </td>
+                </tr>
+
+            </table>
+            <!-- /card -->
+        </td>
+    </tr>
+</table>
 </body>
 </html>

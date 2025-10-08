@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.HtmlUtils;
 
 @Service
 public class TaskService {
@@ -51,10 +52,10 @@ public class TaskService {
 
     private final MailerService mailerService;
 
-    public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository,UsersRepository usersRepository, QuestionRepository questionRepository,
-                       ConstantRepository constantRepository,GroupRepository groupRepository,
-                       EmployeeFeedbackRepository employeeFeedbackRepository,EmployeeRepository employeeRepository,
-                       TaskArchRepository taskArchRepository, AuditTrailService auditTrailService,EmployeeFeedbackArchRepository employeeFeedbackArchRepository,
+    public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository, UsersRepository usersRepository, QuestionRepository questionRepository,
+                       ConstantRepository constantRepository, GroupRepository groupRepository,
+                       EmployeeFeedbackRepository employeeFeedbackRepository, EmployeeRepository employeeRepository,
+                       TaskArchRepository taskArchRepository, AuditTrailService auditTrailService, EmployeeFeedbackArchRepository employeeFeedbackArchRepository,
                        MailerService mailerService) {
         this.taskRepository = taskRepository;
         this.usersRepository = usersRepository;
@@ -134,11 +135,8 @@ public class TaskService {
 
                     task.getTaskQuestions().add(tq);
                 }
-                try {
-                    sendTaskAssign(task);
-                } catch (Exception ignored) {
-                }
                 taskRepository.save(task);
+                sendTaskAssign(populateForMail(task));
             }
         }
     }
@@ -161,15 +159,15 @@ public class TaskService {
     }
 
     @SuppressWarnings("unchecked")
-    public JSONObject filteredTask(String search,Long glId,String pageNo) {
+    public JSONObject filteredTask(String search, Long glId, String pageNo) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         List<TaskDTO> dtoList;
         Page<Task> taskList;
-        if(!CommonUtls.isCompletlyEmpty(search)){
-            taskList = taskRepository.findAllBySearch(search,glId,pageable);
-        }else{
-            taskList = taskRepository.findAllByAssignedToIdOrderByCreatedTimeDesc(glId,pageable);
+        if (!CommonUtls.isCompletlyEmpty(search)) {
+            taskList = taskRepository.findAllBySearch(search, glId, pageable);
+        } else {
+            taskList = taskRepository.findAllByAssignedToIdOrderByCreatedTimeDesc(glId, pageable);
         }
         dtoList = taskList.stream().map(this::populateTask).collect(Collectors.toList());
         json.put("commonListDto", dtoList);
@@ -178,16 +176,15 @@ public class TaskService {
     }
 
 
-
     @SuppressWarnings("unchecked")
-    public JSONObject filteredTaskForAdmin(String search,String pageNo) {
+    public JSONObject filteredTaskForAdmin(String search, String pageNo) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         Page<TaskProjection> taskList;
-        if(!CommonUtls.isCompletlyEmpty(search)){
-            taskList = taskRepository.findEmployeeTaskSummariesWithSearch(search,pageable);
+        if (!CommonUtls.isCompletlyEmpty(search)) {
+            taskList = taskRepository.findEmployeeTaskSummariesWithSearch(search, pageable);
 //            taskList.stream().map(m-> m.setDoj(m.getDoj().format(formatter))).collect(Collectors.toList());
-        }else{
+        } else {
             taskList = taskRepository.findEmployeeTaskSummaries(pageable);
         }
         json.put("commonListDto", taskList);
@@ -195,14 +192,14 @@ public class TaskService {
         return json;
     }
 
-    public JSONObject filteredArchiveTaskForAdmin(String search,String pageNo) {
+    public JSONObject filteredArchiveTaskForAdmin(String search, String pageNo) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         Page<TaskProjection> taskList;
-        if(!CommonUtls.isCompletlyEmpty(search)){
-            taskList = taskRepository.findArchievedEmployeeTaskSummariesWithSearch(search,pageable);
+        if (!CommonUtls.isCompletlyEmpty(search)) {
+            taskList = taskRepository.findArchievedEmployeeTaskSummariesWithSearch(search, pageable);
 //            taskList.stream().map(m-> m.setDoj(m.getDoj().format(formatter))).collect(Collectors.toList());
-        }else{
+        } else {
             taskList = taskRepository.findArchievedEmployeeTaskSummaries(pageable);
         }
         json.put("commonListDto", taskList);
@@ -211,11 +208,11 @@ public class TaskService {
     }
 
     @SuppressWarnings("unchecked")
-    public JSONObject filteredTaskForEmployee(Long eId,String pageNo) {
+    public JSONObject filteredTaskForEmployee(Long eId, String pageNo) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         List<TaskDTO> dtoList;
-        Page<Task> taskList = taskRepository.findAllByEmployeeIdIdOrderByCreatedTimeDesc(eId,pageable);
+        Page<Task> taskList = taskRepository.findAllByEmployeeIdIdOrderByCreatedTimeDesc(eId, pageable);
         dtoList = taskList.stream().map(this::populateTask).collect(Collectors.toList());
         json.put("commonListDto", dtoList);
         json.put("totalElements", taskList.getTotalElements());
@@ -241,9 +238,10 @@ public class TaskService {
         tDto.setPrevCompany(e.getPastOrganization());
         tDto.setComplianceDay(e.getComplainceDay());
         tDto.setAssignedTo(task.getAssignedTo().getName());
+        tDto.setAssignedToEmail(task.getAssignedTo().getEmail());
         tDto.setFreezeTask(task.getFreezeTask());
         Set<TaskQuestions> tq = task.getTaskQuestions();
-        if(ef.isPresent()){
+        if (ef.isPresent()) {
             tDto.setEFId(ef.get().getId().toString());
             tDto.setEFStar(ef.get().getStar());
             tDto.setFeedback(ef.get().getFeedback());
@@ -251,9 +249,9 @@ public class TaskService {
         long completed = tq.stream()
                 .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
                 .count();
-        if (completed == tq.size()){
+        if (completed == tq.size()) {
             tDto.setStatus("Completed");
-        } else{
+        } else {
             tDto.setStatus("In Progress");
         }
         tDto.setDoj(e.getDate().format(formatter));
@@ -289,7 +287,7 @@ public class TaskService {
         tDto.setAssignedTo(task.getAssignedTo().getName());
         tDto.setFreezeTask(task.getFreezeTask());
         Set<TaskQuestionsArch> tq = task.getTaskQuestions();
-        if(ef.isPresent()){
+        if (ef.isPresent()) {
             tDto.setEFId(ef.get().getId().toString());
             tDto.setEFStar(ef.get().getStar());
             tDto.setFeedback(ef.get().getFeedback());
@@ -297,9 +295,9 @@ public class TaskService {
         long completed = tq.stream()
                 .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
                 .count();
-        if (completed == tq.size()){
+        if (completed == tq.size()) {
             tDto.setStatus("Completed");
-        } else{
+        } else {
             tDto.setStatus("In Progress");
         }
         tDto.setDoj(e.getDate().format(formatter));
@@ -318,14 +316,13 @@ public class TaskService {
     public TaskQuestionsDTO populateTaskQuestion(TaskQuestions taskQuestions, LocalDate baseDate) {
         TaskQuestionsDTO dto = new TaskQuestionsDTO();
         dto.setId(taskQuestions.getId().toString());
-        
         try {
             Questions question = taskQuestions.getQuestionId();
             if (question != null) {
                 dto.setQuestionId(question.getText());
-                
+
                 int offsetDays = question.getPeriod().equalsIgnoreCase("after")
-                        ?  Integer.parseInt(question.getComplainceDay())
+                        ? Integer.parseInt(question.getComplainceDay())
                         : -Integer.parseInt(question.getComplainceDay());
                 LocalDate complianceDate = baseDate.plusDays(offsetDays);
 
@@ -354,10 +351,25 @@ public class TaskService {
             dto.setOverDueFlag(false);
             dto.setCreatedTime(new Date().toString());
         }
-        
+
         dto.setResponse(taskQuestions.getResponse());
         dto.setStatus(taskQuestions.getStatus());
         return dto;
+    }
+
+    public TaskDTO populateForMail(Task task) {
+        TaskDTO tDto = new TaskDTO();
+        tDto.setId(task.getId());
+        tDto.setEmployeeName(task.getEmployeeId().getName());
+        tDto.setGroupName(task.getGroupId().getName());
+        tDto.setTotalQuestions(task.getTaskQuestions().size());
+        long completed = task.getTaskQuestions().stream()
+                .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
+                .count();
+        tDto.setCompletedQuestions(completed);
+        tDto.setAssignedTo(task.getAssignedTo().getName());
+        tDto.setAssignedToEmail(task.getAssignedTo().getEmail());
+        return tDto;
     }
 
     public TaskQuestionsDTO populateTaskQuestionArch(TaskQuestionsArch taskQuestions, LocalDate baseDate) {
@@ -371,7 +383,7 @@ public class TaskService {
                 dto.setQuestionId(question.getText());
 
                 int offsetDays = question.getPeriod().equalsIgnoreCase("after")
-                        ?  Integer.parseInt(question.getComplainceDay())
+                        ? Integer.parseInt(question.getComplainceDay())
                         : -Integer.parseInt(question.getComplainceDay());
                 LocalDate complianceDate = baseDate.plusDays(offsetDays);
 
@@ -410,7 +422,7 @@ public class TaskService {
     public List<TaskDTO> findById(String id) {
         List<TaskDTO> tDTOs;
         List<String> tId = Arrays.stream(id.split(",")).toList();
-        List<Task> t =  taskRepository.findAllById(tId);
+        List<Task> t = taskRepository.findAllById(tId);
         tDTOs = t.stream().map(this::populateTask).collect(Collectors.toList());
         return tDTOs;
     }
@@ -418,36 +430,36 @@ public class TaskService {
     public List<TaskDTO> findArchiveTaskById(String id) {
         List<TaskDTO> tDTOs;
         List<String> tId = Arrays.stream(id.split(",")).toList();
-        List<TaskArch> t =  taskArchRepository.findAllById(tId);
+        List<TaskArch> t = taskArchRepository.findAllById(tId);
         tDTOs = t.stream().map(this::populateTaskArch).collect(Collectors.toList());
         return tDTOs;
     }
 
     public List<TaskDTO> findByEmpId(Long id) {
         List<TaskDTO> tDTOs;
-        List<Task> t =  taskRepository.findAllByEmployeeIdIdAndFreezeTask(id,"N");
+        List<Task> t = taskRepository.findAllByEmployeeIdIdAndFreezeTask(id, "N");
         tDTOs = t.stream().map(this::populateTask).collect(Collectors.toList());
         return tDTOs;
     }
 
-    public Boolean freezeTask(String id){
+    public Boolean freezeTask(String id) {
         List<String> taskIdList = Arrays.stream(id.split(",")).toList();
-        List<Task> t =  taskRepository.findAllById(taskIdList);
+        List<Task> t = taskRepository.findAllById(taskIdList);
         t.forEach(task -> task.setFreezeTask("Y"));
         taskRepository.saveAll(t);
         return true;
     }
 
-    public boolean reassignTask(String taskId, Long id){
+    public boolean reassignTask(String taskId, Long id) {
         Optional<Task> t = taskRepository.findById(taskId);
         boolean result = false;
-        if (t.isPresent()){
+        if (t.isPresent()) {
             Task task = t.get();
             String oldAssigned = task.getAssignedTo().getName();
             task.setAssignedTo(new Users(id));
             taskRepository.save(task);
-            try{
-                sendTaskReAssign(task,oldAssigned);
+            try {
+                sendTaskReAssign(task, oldAssigned, id);
             } catch (Exception ignored) {
             }
             result = true;
@@ -463,7 +475,7 @@ public class TaskService {
         return "completed".equalsIgnoreCase(String.valueOf(tq.getStatus()).trim());
     }
 
-    public boolean taskQuestionAnswer(Long qId, String response){
+    public boolean taskQuestionAnswer(Long qId, String response) {
         TaskQuestions tq = taskQuestionRepository.getReferenceById(qId);
         tq.setResponse(response);
         tq.setStatus("completed");
@@ -471,7 +483,7 @@ public class TaskService {
         return true;
     }
 
-    public long taskCountForAdmin(){
+    public long taskCountForAdmin() {
         return taskRepository.count();
     }
 
@@ -563,11 +575,13 @@ public class TaskService {
         if (t == null || t.getEmployeeId() == null) return null;
         try {
             return t.getEmployeeId().getDate();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         try {
             LocalDate d = t.getEmployeeId().getDate();
             if (d != null) return d;
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         return null;
     }
@@ -591,7 +605,7 @@ public class TaskService {
             if (g == null) {
                 continue;
             }
-            final List<Questions> questions = questionRepository.findByGroupIdIdAndQuestionDepartmentDepartmentValue(groupId,e.getDepartment());
+            final List<Questions> questions = questionRepository.findByGroupIdIdAndQuestionDepartmentDepartmentValue(groupId, e.getDepartment());
             if (questions == null || questions.isEmpty()) {
                 // no questions for this group; skip
                 continue;
@@ -638,10 +652,7 @@ public class TaskService {
                 task.getTaskQuestions().add(tq);
             }
             taskRepository.save(task);
-            try{
-                sendTaskAssign(task);
-            }catch(Exception ignored){
-            }
+            sendTaskAssign(populateForMail(task));
         }
         if (dto != null) {
             dto.setModuleId("NA");
@@ -650,7 +661,7 @@ public class TaskService {
         }
     }
 
-    private void sendTaskAssign(final Task t) {
+    private void sendTaskAssign(final TaskDTO t) {
         CompletableFuture.runAsync(() -> {
             try {
                 Constant c = constantRepository.findByConstant("TaskPageGL");
@@ -664,105 +675,136 @@ public class TaskService {
                 }
                 emailBody = stringBuilder.toString();
                 emailBody = emailBody.replaceFirst("@src", Constants.TASK_ASSIGN);
-                emailBody = emailBody.replaceFirst("@name", t.getGroupId().getPgLead().getName());
+                emailBody = emailBody.replaceFirst("@name", t.getAssignedTo());
                 emailBody = emailBody.replaceFirst("@taskId", t.getId());
-                emailBody = emailBody.replaceFirst("@employeeName", t.getEmployeeId().getName());
-                emailBody = emailBody.replaceFirst("@groupId", t.getGroupId().getName());
+                emailBody = emailBody.replaceFirst("@employeeName", t.getEmployeeName());
+                emailBody = emailBody.replaceFirst("@groupId", t.getGroupName());
                 emailBody = emailBody.replaceFirst("@taskUrl", c.getConstantValue());
-                long totalQuestion = t.getTaskQuestions().size();
-                long pendingCount = t.getTaskQuestions().stream()
-                        .filter(q -> "pending".equalsIgnoreCase(q.getStatus()))
-                        .count();
-                long completedCount = totalQuestion-pendingCount;
-                emailBody = emailBody.replaceFirst("@totalQuestion", String.valueOf(totalQuestion));
-                emailBody = emailBody.replaceFirst("@pendingQuestion",  String.valueOf(pendingCount));
-                emailBody = emailBody.replaceFirst("@completedQuestion", String.valueOf(completedCount));
+                long pendingCount = t.getTotalQuestions() - t.getCompletedQuestions();
+                emailBody = emailBody.replaceFirst("@totalQuestion", String.valueOf(t.getTotalQuestions()));
+                emailBody = emailBody.replaceFirst("@pendingQuestion", String.valueOf(pendingCount));
+                emailBody = emailBody.replaceFirst("@completedQuestion", String.valueOf(t.getCompletedQuestions()));
 
                 EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.TASK_ASSIGN,
-                        t.getGroupId().getPgLead().getEmail().split(","), null, null, emailBody);
+                        t.getAssignedToEmail().split(","), null, null, emailBody);
                 mailerService.sendHTMLMail(emailDetailsDTO);
             } catch (Exception ignored) {
             }
         });
     }
 
-    private void sendTaskReAssign(final Task t,final String oldAssigned) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                Constant c = constantRepository.findByConstant("TaskPageGL");
-                InputStream inputStream2 = new ClassPathResource("EmailTemplates/ReassignTask.html")
-                        .getInputStream();
-                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
-                String emailBody;
-                StringBuilder stringBuilder = new StringBuilder();
-                while ((emailBody = br.readLine()) != null) {
-                    stringBuilder.append(emailBody);
-                }
-                emailBody = stringBuilder.toString();
-                emailBody = emailBody.replaceFirst("@src", Constants.TASK_REASSIGN);
-                emailBody = emailBody.replaceFirst("@name", t.getGroupId().getPgLead().getName());
-                emailBody = emailBody.replaceFirst("@fromUser", oldAssigned);
-                emailBody = emailBody.replaceFirst("@taskId", t.getId());
-                emailBody = emailBody.replaceFirst("@employeeName", t.getEmployeeId().getName());
-                emailBody = emailBody.replaceFirst("@groupId", t.getGroupId().getName());
-                emailBody = emailBody.replaceFirst("@taskUrl", c.getConstantValue());
-                long totalQuestion = t.getTaskQuestions().size();
-                long pendingCount = t.getTaskQuestions().stream()
-                        .filter(q -> "pending".equalsIgnoreCase(q.getStatus()))
+    private void sendTaskReAssign(final Task t, final String oldAssigned, final Long id) {
+        final String taskId = t.getId();
+        final String employeeName = t.getEmployeeId().getName();
+        final String groupName = t.getGroupId().getName();
+        final long totalQuestion = t.getTaskQuestions() == null ? 0 : t.getTaskQuestions().size();
+        final long pendingCount = t.getTaskQuestions() == null ? 0 :
+                t.getTaskQuestions().stream()
+                        .filter(q -> q.getStatus() != null && q.getStatus().equalsIgnoreCase("pending"))
                         .count();
-                long completedCount = totalQuestion-pendingCount;
-                emailBody = emailBody.replaceFirst("@totalQuestion", String.valueOf(totalQuestion));
-                emailBody = emailBody.replaceFirst("@pendingQuestion",  String.valueOf(pendingCount));
-                emailBody = emailBody.replaceFirst("@completedQuestion", String.valueOf(completedCount));
+        final long completedCount = totalQuestion - pendingCount;
+        final String taskUrl = constantRepository.findByConstant("TaskPageGL").getConstantValue();
+        Users u = usersRepository.getReferenceById(id);
+        CompletableFuture.runAsync(() -> {
+            try (InputStream is = new ClassPathResource("EmailTemplates/ReassignTask.html").getInputStream();
+                 BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+                StringBuilder sb = new StringBuilder();
+                for (String line; (line = br.readLine()) != null; ) sb.append(line);
+                String emailBody = sb.toString();
+                emailBody = emailBody.replace("@src", Constants.TASK_REASSIGN)
+                        .replace("@name", u.getName())
+                        .replace("@fromUser", oldAssigned)
+                        .replace("@taskId", taskId)
+                        .replace("@employeeName", employeeName)
+                        .replace("@groupId", groupName)
+                        .replace("@taskUrl", taskUrl)
+                        .replace("@totalQuestion", String.valueOf(totalQuestion))
+                        .replace("@pendingQuestion", String.valueOf(pendingCount))
+                        .replace("@completedQuestion", String.valueOf(completedCount));
 
-                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.TASK_REASSIGN,
-                        t.getGroupId().getPgLead().getEmail().split(","), null, null, emailBody);
-                mailerService.sendHTMLMail(emailDetailsDTO);
-            } catch (Exception ignored) {
+                EmailDetailsDTO mail = new EmailDetailsDTO(
+                        Constants.TASK_REASSIGN,
+                        u.getEmail().split(","),
+                        null, null,
+                        emailBody
+                );
+                mailerService.sendHTMLMail(mail);
+            } catch (Exception ex) {
+                mailerService.sendEmailOnException(ex);
             }
         });
     }
 
+    @Transactional(readOnly = true)
     public void taskReminder() {
         final LocalDate todayPlusOne = LocalDate.now().plusDays(1);
         final List<Task> tasks = taskRepository.findAllByFreezeTask("N");
-        final Map<Users, List<Task>> tasksByPgLead = tasks.stream()
+        Map<Long, List<Task>> tasksByPgLeadId = tasks.stream()
                 .filter(t -> t != null
                         && t.getGroupId() != null
-                        && t.getGroupId().getPgLead() != null)
-                .collect(Collectors.groupingBy(t -> t.getGroupId().getPgLead()));
-        for (Map.Entry<Users, List<Task>> entry : tasksByPgLead.entrySet()) {
-            final Users pgLead = entry.getKey();
-            final List<Task> taskList = entry.getValue();
-            final List<Task> pendingForLead = new ArrayList<>();
+                        && t.getGroupId().getPgLead() != null
+                        && t.getGroupId().getPgLead().getId() != null)
+                .collect(Collectors.groupingBy(t -> t.getGroupId().getPgLead().getId()));
+        tasksByPgLeadId.forEach((leadId, taskList) -> {
+            Users pgLead = taskList.get(0).getGroupId().getPgLead();
+
+            List<String> pendingForLead = new ArrayList<>();
             for (Task task : taskList) {
                 if (task == null || task.getEmployeeId() == null) continue;
-                final LocalDate doj = task.getEmployeeId().getDate();
+
+                LocalDate doj = task.getEmployeeId().getDate();
                 if (doj == null) continue;
-                final Collection<TaskQuestions> tqs = task.getTaskQuestions();
+
+                Collection<TaskQuestions> tqs = task.getTaskQuestions();
                 if (tqs == null || tqs.isEmpty()) continue;
-                boolean added = false;
-                for (TaskQuestions tq : tqs) {
-                    if (tq == null) continue;
-                    if ("Completed".equals(tq.getStatus())) continue;
-                    final LocalDate due = computeDue(doj, tq);
-                    if (due != null && due.isEqual(todayPlusOne)) {
-                        pendingForLead.add(task);
-                        added = true;
-                        break;
-                    }
-                }
-                if (added) {
-                   break;
+
+                boolean dueTomorrow = tqs.stream()
+                        .filter(Objects::nonNull)
+                        .filter(tq -> !"completed".equalsIgnoreCase(tq.getStatus()))
+                        .anyMatch(tq -> {
+                            LocalDate due = computeDue(doj, tq);
+                            return due != null && due.isEqual(todayPlusOne);
+                        });
+
+                if (dueTomorrow) {
+                    pendingForLead.add(task.getId());
                 }
             }
             if (!pendingForLead.isEmpty()) {
-                sendTaskIncompleteReminder(pgLead, pendingForLead);
+                sendTaskIncompleteReminder(pgLead.getName(), pgLead.getEmail(), pendingForLead);
+            }
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public void escalationMail() {
+        Constant c = constantRepository.findByConstant("Admins");
+        final LocalDate todayPlusOne = LocalDate.now().plusDays(2);
+        final List<Task> tasks = taskRepository.findAllByFreezeTask("N");
+        for (Task task : tasks) {
+            if (task == null || task.getEmployeeId() == null) continue;
+            final LocalDate doj = task.getEmployeeId().getDate();
+            if (doj == null) continue;
+            final Collection<TaskQuestions> tqs = task.getTaskQuestions();
+            if (tqs == null || tqs.isEmpty()) continue;
+            for (TaskQuestions tq : tqs) {
+                if (tq == null) continue;
+                if ("Completed".equals(tq.getStatus())) continue;
+                final LocalDate due = computeDue(doj, tq);
+                if (due != null && due.isEqual(todayPlusOne)) {
+                    break;
+                } else {
+                    if (!CommonUtls.isCompletlyEmpty(task.getGroupId().getEgLead().getName())) {
+                        sendEscalationMail(task.getGroupId().getEgLead().getEmail().split(","), populateForMail(task));
+                    } else {
+                        sendEscalationMail(c.getConstantValue().split(","), populateForMail(task));
+                    }
+                }
             }
         }
     }
 
-    private void sendTaskIncompleteReminder(final Users u,final List<Task> t) {
+    private void sendTaskIncompleteReminder(final String name, final String email, final List<String> t) {
         CompletableFuture.runAsync(() -> {
             try {
                 InputStream inputStream2 = new ClassPathResource("EmailTemplates/TaskInCompleteReminder.html")
@@ -774,16 +816,52 @@ public class TaskService {
                     stringBuilder.append(emailBody);
                 }
                 emailBody = stringBuilder.toString();
-                emailBody = emailBody.replaceFirst("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
-//                emailBody = emailBody.replaceFirst("@email", dto.getEmail());
-                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE,
-                       u.getEmail().split(","), null, null, emailBody);
+                emailBody = emailBody.replace("@src", Constants.TASK_PENDING);
+                emailBody = emailBody.replace("@recipientName", name);
+                String li = t.stream()
+                        .map(ts -> "<li style=\"margin:0 0 6px 0; mso-special-format:bullet;\">"
+                                + HtmlUtils.htmlEscape(ts) + "</li>")
+                        .collect(Collectors.joining());
+                emailBody = emailBody.replace("@pendingTasksList", li);
+
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.TASK_PENDING,
+                        email.split(","), null, null, emailBody);
                 mailerService.sendHTMLMail(emailDetailsDTO);
             } catch (Exception ignored) {
             }
         });
     }
 
+    private void sendEscalationMail(final String[] u, final TaskDTO t) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                Constant c = constantRepository.findByConstant("TaskPageGL");
+                InputStream inputStream2 = new ClassPathResource("EmailTemplates/EscalationMail.html")
+                        .getInputStream();
+                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
+                String emailBody;
+                StringBuilder stringBuilder = new StringBuilder();
+                while ((emailBody = br.readLine()) != null) {
+                    stringBuilder.append(emailBody);
+                }
+                emailBody = stringBuilder.toString();
+                emailBody = emailBody.replaceFirst("@src", Constants.TASK_ESCALATED);
+                emailBody = emailBody.replaceFirst("@taskId", t.getId());
+                emailBody = emailBody.replaceFirst("@employeeName", t.getEmployeeName());
+                emailBody = emailBody.replaceFirst("@groupId", t.getGroupName());
+                emailBody = emailBody.replaceFirst("@taskUrl", c.getConstantValue());
+                long pendingCount = t.getTotalQuestions() - t.getCompletedQuestions();
+                emailBody = emailBody.replaceFirst("@totalQuestion", String.valueOf(t.getTotalQuestions()));
+                emailBody = emailBody.replaceFirst("@pendingQuestion", String.valueOf(pendingCount));
+                emailBody = emailBody.replaceFirst("@completedQuestion", String.valueOf(t.getCompletedQuestions()));
+
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.TASK_ESCALATED,
+                        u, null, null, emailBody);
+                mailerService.sendHTMLMail(emailDetailsDTO);
+            } catch (Exception ignored) {
+            }
+        });
+    }
 
 
 }

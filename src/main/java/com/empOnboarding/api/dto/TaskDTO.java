@@ -29,6 +29,7 @@ public class TaskDTO {
 	private String prevCompany;
 	private String complianceDay;
 	private String assignedTo;
+	private String assignedToEmail;
 	private String freezeTask;
 	private int totalQuestions;
 	private long completedQuestions;

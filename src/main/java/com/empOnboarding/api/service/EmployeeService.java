@@ -895,6 +895,8 @@ public class EmployeeService {
             try {
                 InputStream inputStream2 = new ClassPathResource("EmailTemplates/WelcomeUser.html")
                         .getInputStream();
+                Constant c = constantRepository.findByConstant("Login");
+                Constant c1 = constantRepository.findByConstant("EmpCheckList");
                 BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
                 String emailBody;
                 StringBuilder stringBuilder = new StringBuilder();
@@ -902,8 +904,11 @@ public class EmployeeService {
                     stringBuilder.append(emailBody);
                 }
                 emailBody = stringBuilder.toString();
-                emailBody = emailBody.replaceFirst("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
-                emailBody = emailBody.replaceFirst("@email", dto.getEmail());
+                emailBody = emailBody.replace("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
+                emailBody = emailBody.replace("@email", dto.getEmail());
+                emailBody = emailBody.replace("@portalUrl", c.getConstantValue());
+                emailBody = emailBody.replace("@empName",dto.getName());
+                emailBody = emailBody.replace("@checkList",c1.getConstantValue());
                 EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE,
                         dto.getEmail().split(","), null, null, emailBody);
                 mailerService.sendHTMLMail(emailDetailsDTO);

@@ -44,7 +44,7 @@ public class UserManagementService {
 
 	public Boolean createUser(UsersDTO userDto, CommonDTO dto) throws IOException {
 		Users user = new Users(null, userDto.getName(), userDto.getEmail(),
-				passwordEncoder.encode(userDto.getPassword()), userDto.getRole(), Constants.Y, new Date(),
+				passwordEncoder.encode(userDto.getPassword()), userDto.getRole(), Constants.Y,userDto.getLoginType(), new Date(),
 				new Date());
 		usersRepository.save(user);
 		dto.setSystemRemarks(user.toString());
