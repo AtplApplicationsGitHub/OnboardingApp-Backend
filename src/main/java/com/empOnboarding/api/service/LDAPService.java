@@ -154,8 +154,11 @@ public class LDAPService {
         try {
             dto.setEmail(CommonUtls.isEmpty(json.getOrDefault("email", "")) ? ""
                     : json.getOrDefault("email", "").toString());
-            dto.setName(CommonUtls.isEmpty(json.getOrDefault("userPrincipalName", "")) ? ""
-                    : json.getOrDefault("userPrincipalName", "").toString());
+            String firstName = CommonUtls.isEmpty(json.getOrDefault("firstName", "")) ? ""
+                    : json.getOrDefault("firstName", "").toString();
+            String lastName = CommonUtls.isEmpty(json.getOrDefault("lastName", "")) ? ""
+                    : json.getOrDefault("lastName", "").toString();
+            dto.setName(firstName+" "+lastName);
         } catch (Exception e) {
             return null;
         }

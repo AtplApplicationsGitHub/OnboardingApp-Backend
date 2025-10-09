@@ -34,6 +34,8 @@ public enum Constants {
 	public static final String TASK_REASSIGN = "Task Reassigned";
 	public static final String TASK_PENDING = "Pending Onboarding Tasks";
 	public static final String TASK_ESCALATED = "Escalated Tasks";
+	public static final String EMPLOYEE_LOGIN = "Employee Login";
+
 
 
 
