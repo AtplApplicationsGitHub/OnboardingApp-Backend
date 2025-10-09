@@ -17,6 +17,7 @@ public class UsersDTO {
 	private String name;
 	private String email;
 	private String role;
+	private String loginType;
 	private String password;
 	private String activeFlag;
 	private String createdTime;

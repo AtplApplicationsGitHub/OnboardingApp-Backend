@@ -57,18 +57,6 @@ public class AuditTrail implements java.io.Serializable {
 
 	@Column(name = "user_remarks", length = 200)
 	private String userRemarks;
-
-	@Column(name = "browser", length = 50)
-	private String browser;
-
-	@Column(name = "unique_doc_code", length = 50)
-	private String uniqueDocCode;
-
-	@Column(name = "doc_type", length = 50)
-	private String docType;
-
-	@Column(name = "documentId")
-	private Long documentId;
 	
 	@Column(name = "module")
 	private String module;

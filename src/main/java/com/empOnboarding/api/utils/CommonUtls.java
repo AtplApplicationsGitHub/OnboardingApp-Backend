@@ -87,7 +87,7 @@ public class CommonUtls {
 		try {
 			if (!isCompletlyEmpty(dateInString)) {
 				SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-				simpleDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+				simpleDateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
 				date = simpleDateFormat.parse(dateInString);
 				timestamp = new Timestamp(date.getTime());
 			}
@@ -188,6 +188,16 @@ public class CommonUtls {
 		dto.setLoginUserId(user.getId());
 		dto.setLoginFullName(user.getUsername());
 		dto.setRoleName(user.getRoleName());
+	}
+
+
+	public static String dateFormat(Date date) {
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		String requiredDate = null;
+		if (date != null) {
+			requiredDate = sdf.format(date);
+		}
+		return requiredDate;
 	}
 
 }

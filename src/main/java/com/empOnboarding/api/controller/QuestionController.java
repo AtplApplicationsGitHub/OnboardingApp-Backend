@@ -1,13 +1,9 @@
 package com.empOnboarding.api.controller;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
-import com.empOnboarding.api.dto.PdfDTO;
-import com.empOnboarding.api.utils.CommonUtls;
+import com.empOnboarding.api.dto.DropDownDTO;
 import org.json.simple.JSONObject;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +19,8 @@ import com.empOnboarding.api.security.CurrentUser;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.service.QuestionService;
 import com.empOnboarding.api.utils.Constants;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/question")
@@ -49,7 +47,7 @@ public class QuestionController {
 	}
 	
 	@PostMapping("/findFilteredQuestionByGroup/{pageNo}/{groupId}")
-	public JSONObject findFilteredGroups(@PathVariable String pageNo, @PathVariable Long groupId) throws Exception {
+	public JSONObject findFilteredGroups(@PathVariable String pageNo, @PathVariable Long groupId){
         return questionService.findByGroupId(groupId,pageNo);
     }
 	
@@ -67,7 +65,7 @@ public class QuestionController {
 	}
 	
 	@DeleteMapping("/deleteQuestion/{id}")
-	public void deleteQuestion(@PathVariable Long id, CommonDTO dto) throws Exception {
+	public void deleteQuestion(@PathVariable Long id, CommonDTO dto){
 		questionService.deleteQuestion(id, dto);
 	}
 	
@@ -79,6 +77,11 @@ public class QuestionController {
 	@GetMapping("/countQuestionsByGroup/{id}")
 	public long countQuestionsByGroup(@PathVariable Long id) {
 		return questionService.countQuestionsByGroup(id);
+	}
+
+	@GetMapping("/getGroups/{level}/{id}")
+	public List<DropDownDTO> getGroups(@PathVariable String level,@PathVariable Long id){
+		return questionService.getGroups(level,id);
 	}
 
 }

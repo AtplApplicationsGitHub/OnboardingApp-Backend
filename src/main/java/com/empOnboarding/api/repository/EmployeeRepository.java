@@ -8,6 +8,10 @@ import org.springframework.data.repository.query.Param;
 
 import com.empOnboarding.api.entity.Employee;
 
+import java.util.Collection;
+import java.util.Optional;
+import java.util.Set;
+
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
 	Page<Employee> findAllByOrderByCreatedTimeDesc(Pageable pageable);
@@ -37,4 +41,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 	Page<Employee> findAllBySearch(@Param("keyword") String keyword, Pageable pageable);
 
 
+    Optional<Employee> findByEmail(String signInId);
+
+	@Query("select lower(e.email) from Employee e where lower(e.email) in :emails")
+	Set<String> findExistingEmailsLower(@Param("emails") Collection<String> emails);
 }

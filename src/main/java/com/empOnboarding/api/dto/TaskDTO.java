@@ -29,6 +29,7 @@ public class TaskDTO {
 	private String prevCompany;
 	private String complianceDay;
 	private String assignedTo;
+	private String assignedToEmail;
 	private String freezeTask;
 	private int totalQuestions;
 	private long completedQuestions;
@@ -37,9 +38,9 @@ public class TaskDTO {
 	private List<TaskQuestionsDTO> questionList;
 	private String createdTime;
 	private String updatedTime;
+	private String eFId;
+	private String eFStar;
+	private String feedback;
 	private List<String> taskId;
-	private Boolean freezeButton;
-
-
 
 }

@@ -1,0 +1,27 @@
+package com.empOnboarding.api.repository;
+
+
+import com.empOnboarding.api.entity.EmployeeFeedback;
+import com.empOnboarding.api.entity.Task;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.empOnboarding.api.entity.Questions;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface EmployeeFeedbackRepository extends JpaRepository<EmployeeFeedback, Long> {
+
+
+    Optional<EmployeeFeedback> findByTaskIdId(String taskId);
+
+    Optional<EmployeeFeedback> findByTaskIdIdAndEmployeeIdId(String taskId, Long id);
+
+    void deleteAllByEmployeeIdId(Long id);
+
+    List<EmployeeFeedback> findByEmployeeIdIdAndTaskId(Long empId, Task t);
+}

@@ -23,8 +23,6 @@ public class AuditTrailDTO extends CommonDTO {
 
 	private String createdTime;
 
-	private String browser;
-
 	private String fromDate;
 
 	private String toDate;
@@ -37,14 +35,12 @@ public class AuditTrailDTO extends CommonDTO {
 
 	private String moduleId;
 
-	public AuditTrailDTO(Long loginUserId, String loginUserName, String event, String ipAddress, String createdTime,
-			String browser, String systemRemarks, String module, String moduleId, String userRemarks) {
+	public AuditTrailDTO(Long loginUserId, String loginUserName, String event, String ipAddress, String createdTime, String systemRemarks, String module, String moduleId, String userRemarks) {
 		this.loginUserId = loginUserId;
 		this.loginUserName = loginUserName;
 		this.event = event;
 		this.ipAddress = ipAddress;
 		this.createdTime = createdTime;
-		this.browser = browser;
 		this.systemRemarks = systemRemarks;
 		this.module = module;
 		this.moduleId = moduleId;

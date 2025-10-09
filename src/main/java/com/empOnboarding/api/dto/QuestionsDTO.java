@@ -18,9 +18,12 @@ public class QuestionsDTO extends CommonDTO{
 	private String id;
 	private String text;
 	private String response;
+	private String defaultFlag;
 	private String period;
 	private String complainceDay;
 	private List<String> questionLevel;
+	private List<String> questionDepartment;
+	private Boolean deleteFlag;
 	private String groupId;
 	private String createdTime;
 	private String updatedTime;

@@ -2,6 +2,7 @@ package com.empOnboarding.api.entity;
 
 import static javax.persistence.GenerationType.IDENTITY;
 
+import java.io.Serial;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -32,6 +33,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Questions implements java.io.Serializable {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 	@Id
 	@GeneratedValue(strategy = IDENTITY)
@@ -49,6 +51,9 @@ public class Questions implements java.io.Serializable {
 	
 	@Column(name = "response")
 	private String response;
+
+	@Column(name = "default_flag")
+	private String defaultFlag;
 	
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "group_id", referencedColumnName = "id")
@@ -56,7 +61,10 @@ public class Questions implements java.io.Serializable {
 	
 	@OneToMany(fetch = FetchType.LAZY, mappedBy = "questionId", cascade = CascadeType.ALL, orphanRemoval = true)
 	private Set<QuestionLevel> questionLevels = new HashSet<>(0);
-	
+
+	@OneToMany(fetch = FetchType.LAZY, mappedBy = "questionId", cascade = CascadeType.ALL, orphanRemoval = true)
+	private Set<QuestionsDepartment> questionDepartment = new HashSet<>(0);
+
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "updated_time", nullable = true, length = 19)
 	private Date updatedTime;
@@ -83,5 +91,15 @@ public class Questions implements java.io.Serializable {
 	public void addQuestionLevel(QuestionLevel ql) {
 	    ql.setQuestionId(this);
 	    this.questionLevels.add(ql);
+	}
+
+	@Override
+	public String toString() {
+		return (text == null ? "" : ", Question = " + text)
+				+ (period == null ? "" : ", Period = " + period)
+				+ (response == null ? "" : ", Response = " + response)
+				+ (complainceDay == null ? "" : ", Compliance Day = " + complainceDay)
+				+ (groupId.getName() == null ? "" : ", Group Name = " + groupId.getName());
+
 	}
 }

@@ -1,37 +1,38 @@
 package com.empOnboarding.api.service;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import com.empOnboarding.api.dto.PdfDTO;
+import com.empOnboarding.api.dto.*;
 
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.*;
-import org.apache.poi.hssf.usermodel.HSSFCell;
-import org.apache.poi.hssf.usermodel.HSSFCellStyle;
-import org.apache.poi.hssf.usermodel.HSSFRow;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.*;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.util.CellRangeAddressList;
 
 
+import org.apache.poi.xssf.usermodel.*;
 import org.json.JSONArray;
 import org.json.simple.JSONObject;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import com.empOnboarding.api.dto.CommonDTO;
-import com.empOnboarding.api.dto.EmployeeDTO;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
 import com.empOnboarding.api.utils.Constants;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -45,30 +46,70 @@ public class EmployeeService {
 
     private final ConstantRepository constantRepository;
 
+    private final EmployeeQuestionService employeeQuestionService;
+
     private final MailerService mailerService;
 
     private final TaskService taskService;
 
+    private final EmployeeFeedbackRepository employeeFeedbackRepository;
+
+    private final LookupItemsRepository lookupItemsRepository;
+
+    private final TaskQuestionRepository taskQuestionRepository;
+
+    private final EmployeeQuestionRepository employeeQuestionRepository;
+
+    private final EmployeeArchRepository employeeArchRepository;
+
+    private final EmployeeFeedbackArchRepository employeeFeedbackArchRepository;
+
+    private final TaskArchRepository taskArchRepository;
+
+    private final EmployeeArchQuestionRepository employeeArchQuestionRepository;
+
+    private final TaskQuestionArchRepository taskQuestionArchRepository;
 
     public EmployeeService(EmployeeRepository employeeRepositrory, AuditTrailService auditTrailService,
-                           ConstantRepository constantRepository, MailerService mailerService, TaskService taskService,
-                           TaskRepository taskRepository) {
+                           ConstantRepository constantRepository,EmployeeQuestionService employeeQuestionService,
+                           MailerService mailerService, TaskService taskService, TaskRepository taskRepository,
+                           EmployeeFeedbackRepository employeeFeedbackRepository, LookupItemsRepository lookupItemsRepository,
+                           TaskQuestionRepository taskQuestionRepository,EmployeeQuestionRepository employeeQuestionRepository,
+                           EmployeeArchRepository employeeArchRepository,EmployeeFeedbackArchRepository employeeFeedbackArchRepository,
+                           TaskArchRepository taskArchRepository,EmployeeArchQuestionRepository employeeArchQuestionRepository,
+                           TaskQuestionArchRepository taskQuestionArchRepository) {
         this.employeeRepositrory = employeeRepositrory;
         this.auditTrailService = auditTrailService;
         this.constantRepository = constantRepository;
+        this.employeeQuestionService = employeeQuestionService;
         this.mailerService = mailerService;
         this.taskService = taskService;
         this.taskRepository = taskRepository;
+        this.employeeFeedbackRepository = employeeFeedbackRepository;
+        this.lookupItemsRepository = lookupItemsRepository;
+        this.taskQuestionRepository = taskQuestionRepository;
+        this.employeeQuestionRepository = employeeQuestionRepository;
+        this.employeeArchRepository = employeeArchRepository;
+        this.employeeFeedbackArchRepository = employeeFeedbackArchRepository;
+        this.taskArchRepository = taskArchRepository;
+        this.employeeArchQuestionRepository = employeeArchQuestionRepository;
+        this.taskQuestionArchRepository = taskQuestionArchRepository;
     }
 
-    public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user){
+    public Boolean createEmployee(EmployeeDTO empDto, CommonDTO dto, UserPrincipal user) {
         List<Employee> eDto = new ArrayList<>();
-        Employee emp = new Employee(null, empDto.getEmail(),empDto.getName(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
+        Employee emp = new Employee(null, empDto.getEmail(), empDto.getName(), empDto.getDepartment(), empDto.getRole(), empDto.getLevel(),
                 empDto.getTotalExperience(), empDto.getPastOrganization(), empDto.getLabAllocation(), empDto.getComplianceDay(),
                 LocalDate.parse(empDto.getDate()), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
         employeeRepositrory.save(emp);
         eDto.add(emp);
-        taskService.createTask(eDto,user);
+        taskService.createTask(eDto, user);
+        employeeQuestionService.createEmployeeQuestion(emp.getLevel(),emp.getId());
+        try {
+            sendWelcomeMail(empDto);
+        } catch (Exception e) {
+            mailerService.sendEmailOnException(e);
+        }
         dto.setSystemRemarks(emp.toString());
         dto.setModuleId(emp.getName());
         auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
@@ -123,6 +164,10 @@ public class EmployeeService {
         eDto.setCreatedTime(CommonUtls.datetoString(emp.getCreatedTime(), c.getConstantValue()));
         eDto.setUpdatedTime(CommonUtls.datetoString(emp.getUpdatedTime(), c.getConstantValue()));
         eDto.setDeleteFlag(!taskRepository.existsByEmployeeId(emp));
+        Boolean archive = taskRepository.findAllByEmployeeIdId(emp.getId())
+                .stream()
+                .allMatch(t -> "Y".equalsIgnoreCase(t.getFreezeTask()));
+        eDto.setArchiveFlag(archive);
         return eDto;
     }
 
@@ -135,21 +180,21 @@ public class EmployeeService {
         return eDTO;
     }
 
-	public Boolean updateEmployee(EmployeeDTO eDto, CommonDTO dto, UserPrincipal userp)  {
-		Optional<Employee> eOpt = employeeRepositrory.findById(Long.valueOf(eDto.getId()));
-		boolean result = false;
-		if (eOpt.isEmpty()) {
-			mailerService.sendEmailOnException(null);
-		} else {
+    public Boolean updateEmployee(EmployeeDTO eDto, CommonDTO dto, UserPrincipal userp) {
+        Optional<Employee> eOpt = employeeRepositrory.findById(Long.valueOf(eDto.getId()));
+        boolean result = false;
+        if (eOpt.isEmpty()) {
+            mailerService.sendEmailOnException(null);
+        } else {
             Employee e = getEmployee(eDto, userp, eOpt);
             employeeRepositrory.save(e);
-			dto.setSystemRemarks(e.toString());
-			dto.setModuleId(e.getName());
-			auditTrailService.saveAuditTrail(Constants.DATA_UPDATE.getValue(), dto);
-			result = true;
-		}
-		return result;
-	}
+            dto.setSystemRemarks(e.toString());
+            dto.setModuleId(e.getName());
+            auditTrailService.saveAuditTrail(Constants.DATA_UPDATE.getValue(), dto);
+            result = true;
+        }
+        return result;
+    }
 
     private static Employee getEmployee(EmployeeDTO eDto, UserPrincipal userp, Optional<Employee> eOpt) {
         Employee e = eOpt.get();
@@ -167,7 +212,7 @@ public class EmployeeService {
         return e;
     }
 
-    public void deleteEmployee(Long id, CommonDTO dto){
+    public void deleteEmployeeMappings(Long id, CommonDTO dto) {
         try {
             employeeRepositrory.deleteById(id);
             dto.setModuleId("NA");
@@ -195,40 +240,152 @@ public class EmployeeService {
         return json;
     }
 
-    public PdfDTO generateExcel(CommonDTO dto) throws Exception {
+    public PdfDTO generateAppetiteReportExcel(String startDate, String endDate, Long patientId, CommonDTO dto)
+            throws Exception {
         String SHEET_NAME = "Add Employee Sample Download";
         String documentFileName = SHEET_NAME + ".xls";
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        List<String> headers = Arrays.asList("Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
-                "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day");
+        List<String> headers = Arrays.asList(
+                "Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
+                "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day"
+        );
+        List<String> lab = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Lab").stream().map(LookupItems::getValue).toList();
+        List<String> level = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Level").stream().map(LookupItems::getValue).toList();
+        List<String> department = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Department").stream().map(LookupItems::getValue).toList();
+
+        final String[] LEVEL_ARR = (level.isEmpty() ? new String[]{} : level.toArray(new String[0]));
+        final String[] LAB_ARR = (lab.isEmpty() ? new String[]{} : lab.toArray(new String[0]));
+        final String[] DEP_ARR = (department.isEmpty() ? new String[]{} : department.toArray(new String[0]));
 
         HSSFWorkbook workbook = new HSSFWorkbook();
-        HSSFCellStyle cellStyle = createCellStyle(workbook);
-
         HSSFSheet sheet = workbook.createSheet(SHEET_NAME);
-        createHeaderRow(sheet, headers, cellStyle);
-        workbook.write(byteArrayOutputStream);
-        byte[] byteArray = byteArrayOutputStream.toByteArray();
-        workbook.close();
-        PdfDTO excel = new PdfDTO(byteArray, documentFileName);
-        dto.setModuleId(Constants.ADD_EMPLOYEE);
-        dto.setModule(Constants.ADD_EMPLOYEE);
-        dto.setSystemRemarks("Add Employee Excel has been downloaded");
-        auditTrailService.saveAuditTrail(Constants.EXCEL_EXPORT.getValue(), dto);
-        return excel;
-    }
-
-    private void createHeaderRow(HSSFSheet sheet, List<String> headers, HSSFCellStyle cellStyle) {
         HSSFRow row = sheet.createRow(0);
         for (int i = 0; i < headers.size(); i++) {
             HSSFCell cell = row.createCell(i);
+            cell.setCellValue(headers.get(i));
+        }
+        workbook.write(byteArrayOutputStream);
+        workbook.close();
+        byte[] byteArray = byteArrayOutputStream.toByteArray();
+        byteArrayOutputStream.close();
+        PdfDTO excel = new PdfDTO(byteArray, documentFileName);
+        return excel;
+    }
+
+    public PdfDTO generateExcel(CommonDTO dto) throws Exception {
+        PdfDTO excel = new PdfDTO();
+        try {
+            final String SHEET_NAME = "Add Employee Sample Download";
+            final String documentFileName = SHEET_NAME + ".xls";
+
+            final List<String> headers = Arrays.asList(
+                    "Candidate Name", "Email", "DOJ", "Department", "Role", "Level",
+                    "Total Experience", "Past Organization", "Lab Allocation", "Compliance Day"
+            );
+            List<String> lab = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Lab").stream().map(LookupItems::getValue).toList();
+            List<String> level = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Level").stream().map(LookupItems::getValue).toList();
+            List<String> department = lookupItemsRepository.findByLookupCategoryNameOrderByDisplayOrderAsc("Department").stream().map(LookupItems::getValue).toList();
+
+            final String[] LEVEL_ARR = (level.isEmpty() ? new String[]{} : level.toArray(new String[0]));
+            final String[] LAB_ARR = (lab.isEmpty() ? new String[]{} : lab.toArray(new String[0]));
+            final String[] DEP_ARR = (department.isEmpty() ? new String[]{} : department.toArray(new String[0]));
+
+
+            final int FIRST_DATA_ROW = 1;
+            final int LAST_DATA_ROW = 1000;
+
+            try (XSSFWorkbook workbook = new XSSFWorkbook();
+                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+
+                XSSFSheet sheet = workbook.createSheet(SHEET_NAME);
+
+                var headerStyle = createCellStyle(workbook);
+                var dateStyle = createDateCellStyle(workbook);
+
+                createHeaderRow(sheet, headers, headerStyle);
+
+                final int dojColIdx = headers.indexOf("DOJ");
+                final int levelColIdx = headers.indexOf("Level");
+                final int labColIdx = headers.indexOf("Lab Allocation");
+                final int depColIdx = headers.indexOf("Department");
+
+
+                if (dojColIdx >= 0) {
+                    for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
+                        Row row = sheet.getRow(r) != null ? sheet.getRow(r) : sheet.createRow(r);
+                        Cell c = row.createCell(dojColIdx);
+                        c.setCellStyle(dateStyle);
+                    }
+                }
+                if (levelColIdx >= 0) {
+                    addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, levelColIdx, LEVEL_ARR);
+                }
+                if (labColIdx >= 0) {
+                    addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, labColIdx, LAB_ARR);
+                }
+                if (depColIdx >= 0) {
+                    addExplicitListValidation(sheet, FIRST_DATA_ROW, LAST_DATA_ROW, depColIdx, DEP_ARR);
+                }
+                sheet.createFreezePane(0, 1);
+                for (int c = 0; c < headers.size(); c++) sheet.autoSizeColumn(c);
+                workbook.write(byteArrayOutputStream);
+                byte[] byteArray = byteArrayOutputStream.toByteArray();
+                excel.setPdf(byteArray);
+                excel.setFileName(documentFileName);
+                dto.setModuleId(Constants.ADD_EMPLOYEE);
+                dto.setModule(Constants.ADD_EMPLOYEE);
+                dto.setSystemRemarks("Add Employee Excel has been downloaded");
+                auditTrailService.saveAuditTrail(Constants.EXCEL_EXPORT.getValue(), dto);
+            }
+        }
+            catch(Exception e){
+                mailerService.sendEmailOnException(e);
+            }
+            return excel;
+
+    }
+
+    private XSSFCellStyle createDateCellStyle(XSSFWorkbook workbook) {
+        XSSFDataFormat df = workbook.createDataFormat();
+        XSSFCellStyle style = workbook.createCellStyle();
+        style.setDataFormat(df.getFormat("dd-mmm-yyyy")); // e.g., 26-Aug-2025
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        return style;
+    }
+
+    /**
+     * Add an explicit list dropdown to a single column across a row range (.xls / HSSF).
+     */
+    private void addExplicitListValidation(XSSFSheet sheet,
+                                           int firstRow, int lastRow,
+                                           int columnIndex,
+                                           String[] values) {
+        XSSFDataValidationHelper helper = new XSSFDataValidationHelper(sheet);
+        DataValidationConstraint constraint = helper.createExplicitListConstraint(values);
+        CellRangeAddressList region = new CellRangeAddressList(firstRow, lastRow, columnIndex, columnIndex);
+        XSSFDataValidation validation = (XSSFDataValidation) helper.createValidation(constraint, region);
+
+        // Better UX + stricter enforcement
+        validation.setSuppressDropDownArrow(false);
+        validation.setErrorStyle(DataValidation.ErrorStyle.STOP);
+        validation.createErrorBox("Invalid choice", "Select a value from the dropdown list.");
+        validation.createPromptBox("Select from list", "Choose one of the predefined options.");
+
+        sheet.addValidationData(validation);
+    }
+
+    private void createHeaderRow(XSSFSheet sheet, List<String> headers, XSSFCellStyle cellStyle) {
+        XSSFRow row = sheet.createRow(0);
+        for (int i = 0; i < headers.size(); i++) {
+            XSSFCell cell = row.createCell(i);
             cell.setCellValue(headers.get(i));
             cell.setCellStyle(cellStyle);
         }
     }
 
-    private HSSFCellStyle createCellStyle(HSSFWorkbook workbook) {
-        HSSFCellStyle cellStyle = workbook.createCellStyle();
+    private XSSFCellStyle createCellStyle(XSSFWorkbook workbook) {
+        XSSFCellStyle cellStyle = workbook.createCellStyle();
         cellStyle.setBorderTop(BorderStyle.THIN);
         cellStyle.setBorderBottom(BorderStyle.THIN);
         cellStyle.setBorderLeft(BorderStyle.THIN);
@@ -238,16 +395,16 @@ public class EmployeeService {
         return cellStyle;
     }
 
-    private static final String COL_NAME                = "name";
-    private static final String COL_EMAIL               = "email";
-    private static final String COL_DEPARTMENT          = "department";
-    private static final String COL_ROLE                = "role";
-    private static final String COL_LEVEL               = "level";
-    private static final String COL_TOTAL_EXPERIENCE    = "total_experience";
-    private static final String COL_PAST_ORGANIZATION   = "past_organization";
-    private static final String COL_LAB_ALLOCATION      = "lab_allocation";
-    private static final String COL_COMPLIANCE_DAY      = "compliance_day";
-    private static final String COL_DATE_OF_JOINING     = "date_of_joining";
+    private static final String COL_NAME = "name";
+    private static final String COL_EMAIL = "email";
+    private static final String COL_DEPARTMENT = "department";
+    private static final String COL_ROLE = "role";
+    private static final String COL_LEVEL = "level";
+    private static final String COL_TOTAL_EXPERIENCE = "total_experience";
+    private static final String COL_PAST_ORGANIZATION = "past_organization";
+    private static final String COL_LAB_ALLOCATION = "lab_allocation";
+    private static final String COL_COMPLIANCE_DAY = "compliance_day";
+    private static final String COL_DATE_OF_JOINING = "date_of_joining";
 
     private static final Map<String, String> HEADER_ALIASES = Map.ofEntries(
             Map.entry("candidate name", COL_NAME),
@@ -307,21 +464,39 @@ public class EmployeeService {
                 result.put("errors", errors);
                 return result;
             }
+
+            final int emailCol = colIndex.getOrDefault(COL_EMAIL, -1);
+            Set<String> sheetEmailsLower = new HashSet<>();     // emails seen in this file (lowercased)
+            Set<String> allEmailsLower = new HashSet<>();       // to batch check against DB
+
+            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+                String raw = emailCol >= 0 ? getCellString(row, emailCol) : null;
+                String normalized = normalizeEmail(raw);
+                if (normalized != null) allEmailsLower.add(normalized);
+            }
+
+            // 2) One DB round-trip: which of those already exist?
+            Set<String> existingEmailsLower = allEmailsLower.isEmpty()
+                    ? Set.of()
+                    : employeeRepositrory.findExistingEmailsLower(allEmailsLower);
+
             for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null) continue;
 
                 try {
-                    String name              = getCellString(row, colIndex.get(COL_NAME));
-                    String email             = getCellString(row, colIndex.get(COL_EMAIL));
-                    String department        = getCellString(row, colIndex.get(COL_DEPARTMENT));
-                    String role              = getCellString(row, colIndex.get(COL_ROLE));
-                    String level             = getCellString(row, colIndex.get(COL_LEVEL));
-                    String totalExperience   = getCellString(row, colIndex.get(COL_TOTAL_EXPERIENCE));
-                    String pastOrganization  = getCellString(row, colIndex.get(COL_PAST_ORGANIZATION));
-                    String labAllocation     = getCellString(row, colIndex.get(COL_LAB_ALLOCATION));
-                    Integer complianceDay    = getCellInteger(row, colIndex.get(COL_COMPLIANCE_DAY));
-                    LocalDate dateOfJoining  = getCellLocalDate(row, colIndex.get(COL_DATE_OF_JOINING));
+                    String name = getCellString(row, colIndex.get(COL_NAME));
+                    String email = getCellString(row, colIndex.get(COL_EMAIL));
+                    String department = getCellString(row, colIndex.get(COL_DEPARTMENT));
+                    String role = getCellString(row, colIndex.get(COL_ROLE));
+                    String level = getCellString(row, colIndex.get(COL_LEVEL));
+                    String totalExperience = getCellString(row, colIndex.get(COL_TOTAL_EXPERIENCE));
+                    String pastOrganization = getCellString(row, colIndex.get(COL_PAST_ORGANIZATION));
+                    String labAllocation = getCellString(row, colIndex.get(COL_LAB_ALLOCATION));
+                    Integer complianceDay = getCellInteger(row, colIndex.get(COL_COMPLIANCE_DAY));
+                    LocalDate dateOfJoining = getCellLocalDate(row, colIndex.get(COL_DATE_OF_JOINING));
 
                     // Basic validations
                     if (name == null || name.isBlank()) {
@@ -356,7 +531,10 @@ public class EmployeeService {
             }
             if (!toPersist.isEmpty()) {
                 employeeRepositrory.saveAll(toPersist);
-                taskService.createTask(toPersist,user);
+                taskService.createTask(toPersist, user);
+                toPersist.stream()
+                        .filter(e -> e.getId() != null && !CommonUtls.isCompletlyEmpty(e.getLevel()))
+                        .forEach(e -> employeeQuestionService.createEmployeeQuestion(e.getLevel().trim(), e.getId()));
             }
 
             result.put("successCount", success);
@@ -395,6 +573,16 @@ public class EmployeeService {
         }
         return map;
     }
+
+    private static String normalizeEmail(String email) {
+        if (email == null) return null;
+        String s = email.trim();
+        if (s.isEmpty()) return null;
+        // basic sanity (optional): must contain '@'
+        if (!s.contains("@")) return null;
+        return s.toLowerCase(Locale.ROOT);
+    }
+
 
     private String normalizeHeader(String s) {
         return s == null ? "" : s.trim().toLowerCase(Locale.ROOT);
@@ -479,7 +667,8 @@ public class EmployeeService {
         for (DateTimeFormatter fmt : DATE_PATTERNS) {
             try {
                 return LocalDate.parse(s.trim(), fmt);
-            } catch (DateTimeParseException ignored) {}
+            } catch (DateTimeParseException ignored) {
+            }
         }
         // Last resort: ISO
         try {
@@ -489,11 +678,257 @@ public class EmployeeService {
         }
     }
 
-    public Boolean labSave(String lab,Long empId){
-        Employee e = employeeRepositrory.getReferenceById(empId);
-        e.setLabAllocation(lab);
-        e.setUpdatedTime(new Date());
-        employeeRepositrory.save(e);
+    public Boolean labSave(String lab, Long empId,CommonDTO dto) {
+        try{
+            Employee e = employeeRepositrory.getReferenceById(empId);
+            String oldValue = e.getLabAllocation();
+            e.setLabAllocation(lab);
+            e.setUpdatedTime(new Date());
+            employeeRepositrory.save(e);
+            dto.setModuleId("NA");
+            dto.setModule(Constants.EMPLOYEE);
+            dto.setSystemRemarks(CommonUtls.getDiffForString("Lab", oldValue, lab));
+            auditTrailService.saveAuditTrail(Constants.DATA_UPDATE.getValue(), dto);
+            return true;
+        }catch(Exception e){
+           mailerService.sendEmailOnException(e);
+        }
+        return false;
+    }
+
+    public Boolean saveEmployeeFeedback(String star, String feedback, String taskId,Long id){
+        Task t = taskRepository.getReferenceById(taskId);
+        Employee e = employeeRepositrory.getReferenceById(id);
+        EmployeeFeedback ef = new EmployeeFeedback(id,star,feedback,"Y",t,e,new Date());
+        employeeFeedbackRepository.save(ef);
         return true;
     }
-}
+
+    public EmployeeFeedbackDTO findEmployeeFeedBack(String taskId,Long id){
+        EmployeeFeedbackDTO dto = new EmployeeFeedbackDTO();
+        Optional<EmployeeFeedback> employeeFeedback = employeeFeedbackRepository.findByTaskIdIdAndEmployeeIdId(taskId,id);
+        if(employeeFeedback.isPresent()){
+            dto = populateFeedbackDto(employeeFeedback.get());
+        }
+        return dto;
+    }
+
+    public EmployeeFeedbackDTO populateFeedbackDto(EmployeeFeedback ef){
+        EmployeeFeedbackDTO eDto = new EmployeeFeedbackDTO();
+        eDto.setId(ef.getId().toString());
+        eDto.setStar(ef.getStar());
+        eDto.setFeedback(ef.getFeedback());
+        eDto.setTaskId(ef.getTaskId().getId());
+        eDto.setCompleted(CommonUtls.trueIfYes(ef.getCompleted()));
+        return eDto;
+    }
+
+    public Boolean emailExists(String email) {
+        boolean result;
+        Optional<Employee> userDetails = employeeRepositrory.findByEmail(email);
+        result = userDetails.isPresent();
+        return result;
+    }
+
+    public String getConstant(String con) {
+        Constant constant = constantRepository.findByConstant(con);
+        return constant.getConstantValue();
+    }
+
+    public Boolean createTaskForEmployee(List<Long> group, Long id, UserPrincipal user,CommonDTO dto){
+        boolean result = false;
+        taskService.createTaskManual(id,group,user,dto);
+        return result;
+    }
+
+    public Boolean empQuestionDelete(Long id, CommonDTO dto, String remarks) {
+        try {
+            taskQuestionRepository.deleteById(id);
+            dto.setModuleId("NA");
+            dto.setSystemRemarks(Constants.QUESTION_DELETE.getValue());
+            dto.setUserRemarks(remarks);
+            auditTrailService.saveAuditTrail(Constants.DATA_DELETE.getValue(), dto);
+            return true;
+        } catch (Exception e) {
+            mailerService.sendEmailOnException(e);
+        }
+        return false;
+    }
+
+//    public Boolean deleteEmployee(Long id,CommonDTO dto){
+//        try {
+//            List<Task> t = taskRepository.findAllByEmployeeIdId(id);
+//            List<String> tId = t.stream().map(Task::getId).collect(Collectors.toList());
+//            List<Long> tqId = t.stream()
+//                    .flatMap(m -> m.getTaskQuestions().stream())
+//                    .map(TaskQuestions::getId)
+//                    .collect(Collectors.toList());
+//            taskQuestionRepository.deleteAllById(tqId);
+//            taskRepository.deleteAllById(tId);
+//            employeeFeedbackRepository.deleteAllByEmployeeIdId(id);
+//            employeeQuestionRepository.deleteAllByEmployeeIdId(id);
+//            employeeRepositrory.deleteById(id);
+//            dto.setModuleId("NA");
+//            dto.setSystemRemarks(Constants.EMPLOYEE_DELETE.getValue());
+//            auditTrailService.saveAuditTrail(Constants.DATA_DELETE.getValue(), dto);
+//            return true;
+//        } catch (Exception e) {
+//            mailerService.sendEmailOnException(e);
+//        }
+//        return false;
+//    }
+
+    @Transactional(
+            propagation = Propagation.REQUIRED,
+            rollbackFor = Exception.class
+    )
+    public Boolean deleteEmployee(Long id, CommonDTO dto) {
+        try {
+            List<Task> tasks = taskRepository.findAllByEmployeeIdId(id);
+            List<String> taskIds = tasks.stream()
+                    .map(Task::getId)
+                    .filter(Objects::nonNull)
+                    .toList();
+            List<Long> taskQuestionIds = tasks.stream()
+                    .flatMap(t -> t.getTaskQuestions().stream())
+                    .map(TaskQuestions::getId)
+                    .filter(Objects::nonNull)
+                    .toList();
+            if (!taskQuestionIds.isEmpty()) {
+                taskQuestionRepository.deleteAllByIdInBatch(taskQuestionIds);
+            }
+            employeeFeedbackRepository.deleteAllByEmployeeIdId(id);
+            employeeQuestionRepository.deleteAllByEmployeeIdId(id);
+
+            if (!taskIds.isEmpty()) {
+                taskRepository.deleteAllByIdInBatch(taskIds);
+            }
+            employeeRepositrory.deleteById(id);
+            dto.setModuleId("NA");
+            dto.setSystemRemarks(Constants.EMPLOYEE_DELETE.getValue());
+            auditTrailService.saveAuditTrail(Constants.DATA_DELETE.getValue(), dto);
+
+            return true;
+        } catch (Exception e) {
+            mailerService.sendEmailOnException(e);
+            throw e;
+        }
+    }
+
+    public void ArchiveEmployee(Long empId,UserPrincipal user){
+        try{
+            Employee e = employeeRepositrory.findById(empId).orElse(null);
+            List<Task> tasks = taskRepository.findAllByEmployeeIdId(empId);
+            List<Long> tqIds = new ArrayList<>();
+            List<Long> efIds = new ArrayList<>();
+            EmployeeArch empArch = new EmployeeArch(empId, e.getEmail(), e.getName(), e.getDepartment(), e.getRole(), e.getLevel(),
+                        e.getTotalExperience(), e.getPastOrganization(), e.getLabAllocation(), e.getComplainceDay(),
+                        e.getDate(), new Date(), new Date(), new Users(user.getId()), new Users(user.getId()));
+            employeeArchRepository.save(empArch);
+            for(Task t :tasks){
+                TaskArch taskArch = new TaskArch(nextId(),empArch,t.getGroupId(),t.getAssignedTo(),null,
+                        t.getUpdatedTime(),t.getCreatedTime(),new Users(user.getId()), t.getCreatedBy(), t.getFreezeTask());
+                taskArchRepository.save(taskArch);
+                List<TaskQuestionsArch> tqArchList = t.getTaskQuestions().stream()
+                        .filter(Objects::nonNull)
+                        .map(tq -> {
+                            TaskQuestionsArch a = new TaskQuestionsArch();
+                            a.setId(tq.getId());
+                            a.setTaskId(taskArch);
+                            a.setQuestionId(tq.getQuestionId());
+                            a.setResponse(tq.getResponse());
+                            a.setStatus(tq.getStatus());
+                            return a;
+                        })
+                        .collect(Collectors.toList());
+                tqIds = tqArchList.stream().map(TaskQuestionsArch::getId).toList();
+                taskQuestionArchRepository.saveAll(tqArchList);
+                List<EmployeeFeedback> ef = employeeFeedbackRepository.findByEmployeeIdIdAndTaskId(empId,t);
+                List<EmployeeFeedbackArch> efarchList = ef.stream()
+                        .filter(Objects::nonNull)
+                        .map(tq -> {
+                            EmployeeFeedbackArch a = new EmployeeFeedbackArch();
+                            a.setId(tq.getId());
+                            a.setStar(tq.getStar());
+                            a.setFeedback(tq.getFeedback());
+                            a.setEmployeeId(empArch);
+                            a.setTaskId(taskArch);
+                            a.setCreatedTime(new Date());
+                            a.setCompleted("Y");
+                            return a;
+                        })
+                        .collect(Collectors.toList());
+                efIds.addAll(ef.stream().map(EmployeeFeedback::getId).toList());
+                employeeFeedbackArchRepository.saveAll(efarchList);
+            }
+            List<EmployeeQuestions> eq = employeeQuestionRepository.findAllByEmployeeIdIdOrderByCreatedTimeDesc(empId);
+            List<EmployeeQuestionsArch> eqArchList = eq.stream()
+                    .filter(Objects::nonNull)
+                    .map(tq -> {
+                        EmployeeQuestionsArch a = new EmployeeQuestionsArch();
+                        a.setId(tq.getId());
+                        a.setQuestionId(tq.getQuestionId());
+                        a.setResponse(tq.getResponse());
+                        a.setCompletedFlag(tq.getCompletedFlag());
+                        a.setEmployeeId(empArch);
+                        a.setCreatedTime(tq.getCreatedTime());
+                        return a;
+                    })
+                    .collect(Collectors.toList());
+            employeeArchQuestionRepository.saveAll(eqArchList);
+
+
+            employeeQuestionRepository.deleteAllById(eq.stream().map(EmployeeQuestions::getId).collect(Collectors.toList()));
+            employeeFeedbackRepository.deleteAllById(efIds);
+            taskQuestionRepository.deleteAllById(tqIds);
+            taskRepository.deleteAllById(tasks.stream().map(Task::getId).collect(Collectors.toList()));
+            employeeRepositrory.deleteById(empId);
+
+        }catch(Exception e){
+            mailerService.sendEmailOnException(e);
+        }
+    }
+
+
+    private void sendWelcomeMail(final EmployeeDTO dto) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                InputStream inputStream2 = new ClassPathResource("EmailTemplates/WelcomeUser.html")
+                        .getInputStream();
+                Constant c = constantRepository.findByConstant("Login");
+                Constant c1 = constantRepository.findByConstant("EmpCheckList");
+                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
+                String emailBody;
+                StringBuilder stringBuilder = new StringBuilder();
+                while ((emailBody = br.readLine()) != null) {
+                    stringBuilder.append(emailBody);
+                }
+                emailBody = stringBuilder.toString();
+                emailBody = emailBody.replace("@src", Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE);
+                emailBody = emailBody.replace("@email", dto.getEmail());
+                emailBody = emailBody.replace("@portalUrl", c.getConstantValue());
+                emailBody = emailBody.replace("@empName",dto.getName());
+                emailBody = emailBody.replace("@checkList",c1.getConstantValue());
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE,
+                        dto.getEmail().split(","), null, null, emailBody);
+                mailerService.sendHTMLMail(emailDetailsDTO);
+            } catch (Exception ignored) {
+            }
+        });
+    }
+        @Transactional(readOnly = true)
+        public String nextId() {
+            LocalDate now = LocalDate.now();
+            String mm = String.format("%02d", now.getMonthValue());
+            String yy = String.format("%02d", now.getYear() % 100);
+            String prefix = "T" + mm + yy;
+            TaskArch last = taskArchRepository.findTopByIdStartingWithOrderByIdDesc(prefix);
+            int nextSeq = 1;
+            if (last != null) {
+                String lastId = last.getId();
+                String seqStr = lastId.substring(prefix.length());
+                nextSeq = Integer.parseInt(seqStr) + 1;
+            }
+            return String.format("%s%05d", prefix, nextSeq);
+        }
+    }

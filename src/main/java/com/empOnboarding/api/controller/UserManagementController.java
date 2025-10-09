@@ -16,6 +16,8 @@ import com.empOnboarding.api.dto.UsersDTO;
 import com.empOnboarding.api.service.UserManagementService;
 import com.empOnboarding.api.utils.Constants;
 
+import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/user")
@@ -36,6 +38,19 @@ public class UserManagementController {
 			dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
 			dto.setModule(Constants.USER_MANAGEMENT);
 			return userManagementService.createUser(userDto, dto);
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+	@PostMapping("/saveUserList")
+	public boolean saveUserList(@RequestBody List<UsersDTO> userDto, CommonDTO dto,
+							HttpServletRequest request) {
+		try {
+			dto.setIpAddress(request.getRemoteAddr());
+			dto.setAgentRequestForAuditTrail(request.getHeader(Constants.USER_AGENT.getValue()));
+			dto.setModule(Constants.USER_MANAGEMENT);
+			return userManagementService.createUserList(userDto, dto);
 		} catch (Exception e) {
 			return false;
 		}

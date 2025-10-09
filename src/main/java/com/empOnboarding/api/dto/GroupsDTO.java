@@ -17,6 +17,7 @@ public class GroupsDTO {
 	private String name;
 	private String pgLead;
 	private String egLead;
+	private String autoAssign;
 	private String createdTime;
 	private String updatedTime;
 	private long quesCount;

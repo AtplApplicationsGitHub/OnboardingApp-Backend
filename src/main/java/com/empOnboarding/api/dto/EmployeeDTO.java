@@ -27,5 +27,6 @@ public class EmployeeDTO {
 	private String createdTime;
 	private String updatedTime;
 	private Boolean deleteFlag;
+	private Boolean archiveFlag;
 	
 }

@@ -45,6 +45,9 @@ public class Users implements java.io.Serializable {
 
 	@Column(name = "active_flag")
 	private String activeFlag;
+
+	@Column(name = "login_type")
+	private String loginType;
 	
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "updated_time", nullable = true, length = 19)
@@ -57,8 +60,20 @@ public class Users implements java.io.Serializable {
 	public Users(Long id) {
 		this.id = id;
 	}
-	
-	
+
+	public Users(String name) {
+		this.name = name;
+	}
+
+
+	@Override
+	public String toString() {
+		return (name == null ? "" : ", Name = " + name)
+				+ (email == null ? "" : ", Email = " + email)
+				+ (role == null ? "" : ", Role = " + role)
+				+ (activeFlag == null ? "" : ", Active Flag = " + activeFlag);
+
+	}
 	
 
 }

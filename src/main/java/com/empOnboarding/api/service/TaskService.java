@@ -1,14 +1,20 @@
 package com.empOnboarding.api.service;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import com.empOnboarding.api.dto.*;
 import com.empOnboarding.api.entity.*;
 import com.empOnboarding.api.repository.*;
+import com.empOnboarding.api.utils.Constants;
 import org.json.simple.JSONObject;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +23,7 @@ import org.springframework.stereotype.Service;
 import com.empOnboarding.api.security.UserPrincipal;
 import com.empOnboarding.api.utils.CommonUtls;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.HtmlUtils;
 
 @Service
 public class TaskService {
@@ -33,29 +40,69 @@ public class TaskService {
 
     private final GroupRepository groupRepository;
 
-    public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository,UsersRepository usersRepository, QuestionRepository questionRepository,
-                       ConstantRepository constantRepository,GroupRepository groupRepository) {
+    private final EmployeeFeedbackRepository employeeFeedbackRepository;
+
+    private final EmployeeFeedbackArchRepository employeeFeedbackArchRepository;
+
+    private final EmployeeRepository employeeRepository;
+
+    private final TaskArchRepository taskArchRepository;
+
+    private final AuditTrailService auditTrailService;
+
+    private final MailerService mailerService;
+
+    public TaskService(TaskRepository taskRepository, TaskQuestionRepository taskQuestionRepository, UsersRepository usersRepository, QuestionRepository questionRepository,
+                       ConstantRepository constantRepository, GroupRepository groupRepository,
+                       EmployeeFeedbackRepository employeeFeedbackRepository, EmployeeRepository employeeRepository,
+                       TaskArchRepository taskArchRepository, AuditTrailService auditTrailService, EmployeeFeedbackArchRepository employeeFeedbackArchRepository,
+                       MailerService mailerService) {
         this.taskRepository = taskRepository;
         this.usersRepository = usersRepository;
         this.questionRepository = questionRepository;
         this.constantRepository = constantRepository;
         this.groupRepository = groupRepository;
         this.taskQuestionRepository = taskQuestionRepository;
+        this.employeeFeedbackRepository = employeeFeedbackRepository;
+        this.employeeRepository = employeeRepository;
+        this.auditTrailService = auditTrailService;
+        this.taskArchRepository = taskArchRepository;
+        this.employeeFeedbackArchRepository = employeeFeedbackArchRepository;
+        this.mailerService = mailerService;
     }
 
     @Transactional
     public void createTask(List<Employee> employees, UserPrincipal user) {
-        Users actor = usersRepository.getReferenceById(user.getId());
+        final Users actor = usersRepository.getReferenceById(user.getId());
+        final Date now = new Date();
+
         for (Employee emp : employees) {
-            List<Questions> questions = questionRepository.findDistinctByLevel(emp.getLevel());
-            Map<Long, List<Questions>> byGroup = questions.stream()
-                    .filter(q -> q.getGroupId() != null && q.getGroupId().getId() != null)
+            final List<Questions> questions =
+                    questionRepository.findDistinctByLevelAndDepartment(emp.getLevel(), emp.getDepartment());
+
+            final Map<Long, List<Questions>> byGroup = questions.stream()
+                    .filter(q -> q != null && q.getGroupId() != null && q.getGroupId().getId() != null)
                     .collect(Collectors.groupingBy(q -> q.getGroupId().getId()));
-            Date now = new Date();
-            byGroup.forEach((groupId, questionsList) -> {
-                Groups g = groupRepository.getReferenceById(groupId);
-                if (questionsList == null || questionsList.isEmpty()) return;
-                Task task = new Task();
+
+            for (Map.Entry<Long, List<Questions>> entry : byGroup.entrySet()) {
+                final Long groupId = entry.getKey();
+                final List<Questions> questionsList = entry.getValue();
+
+                if (groupId == null || questionsList == null || questionsList.isEmpty()) {
+                    continue;
+                }
+
+                final Groups g = groupRepository.findById(groupId).orElse(null);
+                if (g == null) {
+                    continue;
+                }
+
+                final String autoAssign = g.getAutoAssign();
+                if (autoAssign == null || autoAssign.equalsIgnoreCase("No")) {
+                    continue;
+                }
+
+                final Task task = new Task();
                 task.setId(nextId());
                 task.setEmployeeId(emp);
                 task.setGroupId(g);
@@ -64,18 +111,36 @@ public class TaskService {
                 task.setCreatedTime(now);
                 task.setUpdatedTime(now);
                 task.setFreezeTask("N");
-                Users lead = questionsList.get(0).getGroupId().getPgLead();
-                task.setAssignedTo(lead != null ? lead : actor);
+                if (task.getTaskQuestions() == null) {
+                    task.setTaskQuestions(new HashSet<>());
+                }
+
+                final Users lead = (g.getPgLead() != null) ? g.getPgLead() : actor;
+                task.setAssignedTo(lead);
+
                 for (Questions qn : questionsList) {
-                    TaskQuestions tq = new TaskQuestions();
+                    if (qn == null) continue;
+
+                    final TaskQuestions tq = new TaskQuestions();
                     tq.setTaskId(task);
                     tq.setQuestionId(qn);
+
+                    final String def = qn.getDefaultFlag();
+                    if ("yes".equalsIgnoreCase(def)) {
+                        tq.setResponse("YES");
+                        tq.setStatus("completed");
+                    } else {
+                        tq.setStatus("pending");
+                    }
+
                     task.getTaskQuestions().add(tq);
                 }
                 taskRepository.save(task);
-            });
+                sendTaskAssign(populateForMail(task));
+            }
         }
     }
+
 
     @Transactional(readOnly = true)
     public String nextId() {
@@ -94,15 +159,15 @@ public class TaskService {
     }
 
     @SuppressWarnings("unchecked")
-    public JSONObject filteredTask(String search,Long glId,String pageNo) {
+    public JSONObject filteredTask(String search, Long glId, String pageNo) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         List<TaskDTO> dtoList;
         Page<Task> taskList;
-        if(!CommonUtls.isCompletlyEmpty(search)){
-            taskList = taskRepository.findAllBySearch(search,glId,pageable);
-        }else{
-            taskList = taskRepository.findAllByAssignedToIdOrderByCreatedTimeDesc(glId,pageable);
+        if (!CommonUtls.isCompletlyEmpty(search)) {
+            taskList = taskRepository.findAllBySearch(search, glId, pageable);
+        } else {
+            taskList = taskRepository.findAllByAssignedToIdOrderByCreatedTimeDesc(glId, pageable);
         }
         dtoList = taskList.stream().map(this::populateTask).collect(Collectors.toList());
         json.put("commonListDto", dtoList);
@@ -111,18 +176,45 @@ public class TaskService {
     }
 
 
-
     @SuppressWarnings("unchecked")
-    public JSONObject filteredTaskForAdmin(String search,String pageNo) {
+    public JSONObject filteredTaskForAdmin(String search, String pageNo) {
         JSONObject json = new JSONObject();
         Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
         Page<TaskProjection> taskList;
-        if(!CommonUtls.isCompletlyEmpty(search)){
-            taskList = taskRepository.findEmployeeTaskSummariesWithSearch(search,pageable);
-        }else{
+        if (!CommonUtls.isCompletlyEmpty(search)) {
+            taskList = taskRepository.findEmployeeTaskSummariesWithSearch(search, pageable);
+//            taskList.stream().map(m-> m.setDoj(m.getDoj().format(formatter))).collect(Collectors.toList());
+        } else {
             taskList = taskRepository.findEmployeeTaskSummaries(pageable);
         }
         json.put("commonListDto", taskList);
+        json.put("totalElements", taskList.getTotalElements());
+        return json;
+    }
+
+    public JSONObject filteredArchiveTaskForAdmin(String search, String pageNo) {
+        JSONObject json = new JSONObject();
+        Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
+        Page<TaskProjection> taskList;
+        if (!CommonUtls.isCompletlyEmpty(search)) {
+            taskList = taskRepository.findArchievedEmployeeTaskSummariesWithSearch(search, pageable);
+//            taskList.stream().map(m-> m.setDoj(m.getDoj().format(formatter))).collect(Collectors.toList());
+        } else {
+            taskList = taskRepository.findArchievedEmployeeTaskSummaries(pageable);
+        }
+        json.put("commonListDto", taskList);
+        json.put("totalElements", taskList.getTotalElements());
+        return json;
+    }
+
+    @SuppressWarnings("unchecked")
+    public JSONObject filteredTaskForEmployee(Long eId, String pageNo) {
+        JSONObject json = new JSONObject();
+        Pageable pageable = PageRequest.of(Integer.parseInt(pageNo), 10);
+        List<TaskDTO> dtoList;
+        Page<Task> taskList = taskRepository.findAllByEmployeeIdIdOrderByCreatedTimeDesc(eId, pageable);
+        dtoList = taskList.stream().map(this::populateTask).collect(Collectors.toList());
+        json.put("commonListDto", dtoList);
         json.put("totalElements", taskList.getTotalElements());
         return json;
     }
@@ -131,6 +223,7 @@ public class TaskService {
     public TaskDTO populateTask(Task task) {
         TaskDTO tDto = new TaskDTO();
         Constant c = constantRepository.findByConstant("DateFormat");
+        Optional<EmployeeFeedback> ef = employeeFeedbackRepository.findByTaskIdId(task.getId());
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
         Employee e = task.getEmployeeId();
         tDto.setId(task.getId());
@@ -145,23 +238,73 @@ public class TaskService {
         tDto.setPrevCompany(e.getPastOrganization());
         tDto.setComplianceDay(e.getComplainceDay());
         tDto.setAssignedTo(task.getAssignedTo().getName());
+        tDto.setAssignedToEmail(task.getAssignedTo().getEmail());
         tDto.setFreezeTask(task.getFreezeTask());
         Set<TaskQuestions> tq = task.getTaskQuestions();
-        boolean allCompleted = tq.stream()
-                    .allMatch(q -> "completed".equalsIgnoreCase(q.getStatus()));
-        task.setFreezeButton(allCompleted);
+        if (ef.isPresent()) {
+            tDto.setEFId(ef.get().getId().toString());
+            tDto.setEFStar(ef.get().getStar());
+            tDto.setFeedback(ef.get().getFeedback());
+        }
         long completed = tq.stream()
                 .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
                 .count();
-        if (completed == tq.size()){
+        if (completed == tq.size()) {
             tDto.setStatus("Completed");
-        } else{
+        } else {
             tDto.setStatus("In Progress");
         }
         tDto.setDoj(e.getDate().format(formatter));
         tDto.setTotalQuestions(tq.size());
         List<TaskQuestionsDTO> questionDto = tq.stream()
                 .map(q -> populateTaskQuestion(q, e.getDate()))
+                .sorted(Comparator.comparing(TaskQuestionsDTO::getCreatedTime)) // ascending
+                .collect(Collectors.toList());
+        tDto.setQuestionList(questionDto);
+        tDto.setCompletedQuestions(completed);
+        tDto.setCreatedTime(CommonUtls.datetoString(task.getCreatedTime(), c.getConstantValue()));
+        tDto.setUpdatedTime(CommonUtls.datetoString(task.getUpdatedTime(), c.getConstantValue()));
+        return tDto;
+    }
+
+    public TaskDTO populateTaskArch(TaskArch task) {
+        TaskDTO tDto = new TaskDTO();
+        Constant c = constantRepository.findByConstant("DateFormat");
+        Optional<EmployeeFeedbackArch> ef = employeeFeedbackArchRepository.findByTaskIdId(task.getId());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(c.getConstantValue());
+        EmployeeArch e = task.getEmployeeId();
+        tDto.setId(task.getId());
+        tDto.setGroupName(task.getGroupId().getName());
+        tDto.setEmployeeId(e.getId());
+        tDto.setEmployeeName(e.getName());
+        tDto.setLevel(e.getLevel());
+        tDto.setDepartment(e.getDepartment());
+        tDto.setRole(e.getRole());
+        tDto.setLab(e.getLabAllocation());
+        tDto.setPastExperience(e.getTotalExperience());
+        tDto.setPrevCompany(e.getPastOrganization());
+        tDto.setComplianceDay(e.getComplainceDay());
+        tDto.setAssignedTo(task.getAssignedTo().getName());
+        tDto.setFreezeTask(task.getFreezeTask());
+        Set<TaskQuestionsArch> tq = task.getTaskQuestions();
+        if (ef.isPresent()) {
+            tDto.setEFId(ef.get().getId().toString());
+            tDto.setEFStar(ef.get().getStar());
+            tDto.setFeedback(ef.get().getFeedback());
+        }
+        long completed = tq.stream()
+                .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
+                .count();
+        if (completed == tq.size()) {
+            tDto.setStatus("Completed");
+        } else {
+            tDto.setStatus("In Progress");
+        }
+        tDto.setDoj(e.getDate().format(formatter));
+        tDto.setTotalQuestions(tq.size());
+        List<TaskQuestionsDTO> questionDto = tq.stream()
+                .map(q -> populateTaskQuestionArch(q, e.getDate()))
+                .sorted(Comparator.comparing(TaskQuestionsDTO::getCreatedTime)) // ascending
                 .collect(Collectors.toList());
         tDto.setQuestionList(questionDto);
         tDto.setCompletedQuestions(completed);
@@ -173,61 +316,552 @@ public class TaskService {
     public TaskQuestionsDTO populateTaskQuestion(TaskQuestions taskQuestions, LocalDate baseDate) {
         TaskQuestionsDTO dto = new TaskQuestionsDTO();
         dto.setId(taskQuestions.getId().toString());
-        dto.setQuestionId(taskQuestions.getQuestionId().getText());
+        try {
+            Questions question = taskQuestions.getQuestionId();
+            if (question != null) {
+                dto.setQuestionId(question.getText());
 
-        int offsetDays = taskQuestions.getQuestionId().getPeriod().equalsIgnoreCase("after")
-                ?  Integer.parseInt(taskQuestions.getQuestionId().getComplainceDay())
-                : -Integer.parseInt(taskQuestions.getQuestionId().getComplainceDay());
-        LocalDate complianceDate = baseDate.plusDays(offsetDays);
+                int offsetDays = question.getPeriod().equalsIgnoreCase("after")
+                        ? Integer.parseInt(question.getComplainceDay())
+                        : -Integer.parseInt(question.getComplainceDay());
+                LocalDate complianceDate = baseDate.plusDays(offsetDays);
 
-        dto.setOverDueFlag(!"completed".equalsIgnoreCase(taskQuestions.getStatus())
-                && complianceDate.isBefore(LocalDate.now()));
-        Date utilDate = java.sql.Date.valueOf(complianceDate);
-        Constant c = constantRepository.findByConstant("DateFormat");
-        String formattedDate = CommonUtls.datetoString(utilDate, c.getConstantValue());
-        dto.setComplianceDay(formattedDate);
-        dto.setResponseType(taskQuestions.getQuestionId().getResponse());
+                dto.setOverDueFlag(!"completed".equalsIgnoreCase(taskQuestions.getStatus())
+                        && complianceDate.isBefore(LocalDate.now()));
+                Date utilDate = java.sql.Date.valueOf(complianceDate);
+                Constant c = constantRepository.findByConstant("DateFormat");
+                String formattedDate = CommonUtls.datetoString(utilDate, c.getConstantValue());
+                dto.setComplianceDay(formattedDate);
+                dto.setResponseType(question.getResponse());
+                dto.setCreatedTime(question.getCreatedTime().toString());
+            } else {
+                // Handle missing question gracefully
+                dto.setQuestionId("Question not found (ID: " + taskQuestions.getId() + ")");
+                dto.setComplianceDay(baseDate.toString());
+                dto.setResponseType("TEXT");
+                dto.setOverDueFlag(false);
+                dto.setCreatedTime(new Date().toString());
+            }
+        } catch (Exception e) {
+            // Handle any Hibernate proxy exceptions or missing entities
+            System.err.println("Error loading question for TaskQuestion ID " + taskQuestions.getId() + ": " + e.getMessage());
+            dto.setQuestionId("Question not available (Error loading question)");
+            dto.setComplianceDay(baseDate.toString());
+            dto.setResponseType("TEXT");
+            dto.setOverDueFlag(false);
+            dto.setCreatedTime(new Date().toString());
+        }
+
         dto.setResponse(taskQuestions.getResponse());
         dto.setStatus(taskQuestions.getStatus());
+        return dto;
+    }
 
+    public TaskDTO populateForMail(Task task) {
+        TaskDTO tDto = new TaskDTO();
+        tDto.setId(task.getId());
+        tDto.setEmployeeName(task.getEmployeeId().getName());
+        tDto.setGroupName(task.getGroupId().getName());
+        tDto.setTotalQuestions(task.getTaskQuestions().size());
+        long completed = task.getTaskQuestions().stream()
+                .filter(q -> "completed".equalsIgnoreCase(q.getStatus()))
+                .count();
+        tDto.setCompletedQuestions(completed);
+        tDto.setAssignedTo(task.getAssignedTo().getName());
+        tDto.setAssignedToEmail(task.getAssignedTo().getEmail());
+        return tDto;
+    }
+
+    public TaskQuestionsDTO populateTaskQuestionArch(TaskQuestionsArch taskQuestions, LocalDate baseDate) {
+        TaskQuestionsDTO dto = new TaskQuestionsDTO();
+        dto.setId(taskQuestions.getId().toString());
+
+        try {
+            // Check if the question exists and is accessible
+            Questions question = taskQuestions.getQuestionId();
+            if (question != null) {
+                dto.setQuestionId(question.getText());
+
+                int offsetDays = question.getPeriod().equalsIgnoreCase("after")
+                        ? Integer.parseInt(question.getComplainceDay())
+                        : -Integer.parseInt(question.getComplainceDay());
+                LocalDate complianceDate = baseDate.plusDays(offsetDays);
+
+                dto.setOverDueFlag(!"completed".equalsIgnoreCase(taskQuestions.getStatus())
+                        && complianceDate.isBefore(LocalDate.now()));
+                Date utilDate = java.sql.Date.valueOf(complianceDate);
+                Constant c = constantRepository.findByConstant("DateFormat");
+                String formattedDate = CommonUtls.datetoString(utilDate, c.getConstantValue());
+                dto.setComplianceDay(formattedDate);
+                dto.setResponseType(question.getResponse());
+                dto.setCreatedTime(question.getCreatedTime().toString());
+            } else {
+                // Handle missing question gracefully
+                dto.setQuestionId("Question not found (ID: " + taskQuestions.getId() + ")");
+                dto.setComplianceDay(baseDate.toString());
+                dto.setResponseType("TEXT");
+                dto.setOverDueFlag(false);
+                dto.setCreatedTime(new Date().toString());
+            }
+        } catch (Exception e) {
+            // Handle any Hibernate proxy exceptions or missing entities
+            System.err.println("Error loading question for TaskQuestion ID " + taskQuestions.getId() + ": " + e.getMessage());
+            dto.setQuestionId("Question not available (Error loading question)");
+            dto.setComplianceDay(baseDate.toString());
+            dto.setResponseType("TEXT");
+            dto.setOverDueFlag(false);
+            dto.setCreatedTime(new Date().toString());
+        }
+
+        dto.setResponse(taskQuestions.getResponse());
+        dto.setStatus(taskQuestions.getStatus());
         return dto;
     }
 
 
-
     public List<TaskDTO> findById(String id) {
-        List<TaskDTO> tDTOs = new ArrayList<>();
+        List<TaskDTO> tDTOs;
         List<String> tId = Arrays.stream(id.split(",")).toList();
-        List<Task> t =  taskRepository.findAllById(tId);
+        List<Task> t = taskRepository.findAllById(tId);
         tDTOs = t.stream().map(this::populateTask).collect(Collectors.toList());
         return tDTOs;
     }
 
-    public Boolean freezeTask(String id){
+    public List<TaskDTO> findArchiveTaskById(String id) {
+        List<TaskDTO> tDTOs;
+        List<String> tId = Arrays.stream(id.split(",")).toList();
+        List<TaskArch> t = taskArchRepository.findAllById(tId);
+        tDTOs = t.stream().map(this::populateTaskArch).collect(Collectors.toList());
+        return tDTOs;
+    }
+
+    public List<TaskDTO> findByEmpId(Long id) {
+        List<TaskDTO> tDTOs;
+        List<Task> t = taskRepository.findAllByEmployeeIdIdAndFreezeTask(id, "N");
+        tDTOs = t.stream().map(this::populateTask).collect(Collectors.toList());
+        return tDTOs;
+    }
+
+    public Boolean freezeTask(String id) {
         List<String> taskIdList = Arrays.stream(id.split(",")).toList();
-        List<Task> t =  taskRepository.findAllById(taskIdList);
+        List<Task> t = taskRepository.findAllById(taskIdList);
         t.forEach(task -> task.setFreezeTask("Y"));
         taskRepository.saveAll(t);
         return true;
     }
 
-    public boolean reassignTask(String taskId, Long id){
+    public boolean reassignTask(String taskId, Long id) {
         Optional<Task> t = taskRepository.findById(taskId);
         boolean result = false;
-        if (t.isPresent()){
+        if (t.isPresent()) {
             Task task = t.get();
+            String oldAssigned = task.getAssignedTo().getName();
             task.setAssignedTo(new Users(id));
             taskRepository.save(task);
+            try {
+                sendTaskReAssign(task, oldAssigned, id);
+            } catch (Exception ignored) {
+            }
             result = true;
         }
         return result;
     }
 
-    public boolean taskQuestionAnswer(Long qId, String response){
+    LocalDate dueDate(LocalDate doj, int complianceDay, String period) {
+        return "after".equalsIgnoreCase(period) ? doj.plusDays(complianceDay) : doj.minusDays(complianceDay);
+    }
+
+    boolean isCompleted(TaskQuestions tq) {
+        return "completed".equalsIgnoreCase(String.valueOf(tq.getStatus()).trim());
+    }
+
+    public boolean taskQuestionAnswer(Long qId, String response) {
         TaskQuestions tq = taskQuestionRepository.getReferenceById(qId);
         tq.setResponse(response);
         tq.setStatus("completed");
         taskQuestionRepository.save(tq);
         return true;
     }
+
+    public long taskCountForAdmin() {
+        return taskRepository.count();
+    }
+
+    public JSONObject taskCountForGL(UserPrincipal user) {
+        JSONObject json = new JSONObject();
+        LocalDate today = LocalDate.now();
+
+        List<Task> tasks = taskRepository.findAllByAssignedToId(user.getId());
+
+        long distinctEmployeeCount = tasks.stream()
+                .map(Task::getEmployeeId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+
+        long fullyCompletedTaskCount = tasks.stream()
+                .filter(t -> t.getTaskQuestions() != null && !t.getTaskQuestions().isEmpty())
+                .filter(t -> t.getTaskQuestions().stream()
+                        .allMatch(tq -> "completed".equalsIgnoreCase(String.valueOf(tq.getStatus()).trim()))
+                )
+                .count();
+
+        long overdueTaskCount = tasks.stream()
+                .filter(t -> t.getTaskQuestions() != null && !t.getTaskQuestions().isEmpty())
+                .filter(t -> {
+                    LocalDate doj = extractDoj(t);
+                    if (doj == null) return false;
+
+                    List<TaskQuestions> incomplete = t.getTaskQuestions().stream()
+                            .filter(q -> !isCompleted(q))
+                            .toList();
+
+                    if (incomplete.isEmpty()) return false;
+
+                    return incomplete.stream()
+                            .map(q -> computeDue(doj, q))
+                            .allMatch(due -> due != null && due.isBefore(today));
+                })
+                .count();
+
+        long pendingTaskCount = tasks.stream()
+                .filter(t -> t.getTaskQuestions() != null && !t.getTaskQuestions().isEmpty())
+                .filter(t -> {
+                    LocalDate doj = extractDoj(t);
+                    if (doj == null) return false;
+
+                    List<TaskQuestions> incomplete = t.getTaskQuestions().stream()
+                            .filter(q -> !isCompleted(q))
+                            .toList();
+
+                    if (incomplete.isEmpty()) return false;
+                    return incomplete.stream()
+                            .map(q -> computeDue(doj, q))
+                            .anyMatch(due -> due == null || !due.isBefore(today)); // null or due >= today
+                })
+                .count();
+
+        json.put("totalEmployees", distinctEmployeeCount);
+        json.put("totalCompletedTasks", fullyCompletedTaskCount);
+        json.put("totalPendingTasks", pendingTaskCount);
+        json.put("overdueTasks", overdueTaskCount);
+        return json;
+    }
+
+    private static LocalDate computeDue(LocalDate doj, TaskQuestions tq) {
+        if (tq == null || tq.getQuestionId() == null || doj == null) return null;
+        Questions q = tq.getQuestionId();
+
+        Integer days = parsePositiveIntOrNull(q.getComplainceDay());
+        if (days == null) return null;
+
+        String period = String.valueOf(q.getPeriod()).trim();
+        if ("after".equalsIgnoreCase(period)) {
+            return doj.plusDays(days);
+        } else {
+            return doj.minusDays(days);
+        }
+    }
+
+    private static Integer parsePositiveIntOrNull(String s) {
+        if (s == null) return null;
+        String trimmed = s.trim();
+        if (!trimmed.matches("\\d+")) return null;
+        int v = Integer.parseInt(trimmed);
+        return v >= 0 ? v : null;
+    }
+
+    private static LocalDate extractDoj(Task t) {
+        if (t == null || t.getEmployeeId() == null) return null;
+        try {
+            return t.getEmployeeId().getDate();
+        } catch (Exception ignored) {
+        }
+        try {
+            LocalDate d = t.getEmployeeId().getDate();
+            if (d != null) return d;
+        } catch (Exception ignored) {
+        }
+
+        return null;
+    }
+
+    @Transactional
+    public void createTaskManual(long employeeId, List<Long> groupIds, UserPrincipal user, CommonDTO dto) {
+        // Load required refs
+        final Employee e = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
+        final Users actor = usersRepository.getReferenceById(user.getId()); // should exist
+        final Date now = new Date();
+        if (groupIds == null || groupIds.isEmpty()) {
+            return;
+        }
+        for (Long groupId : groupIds) {
+            if (groupId == null) {
+                continue;
+            }
+
+            final Groups g = groupRepository.findById(groupId).orElse(null);
+            if (g == null) {
+                continue;
+            }
+            final List<Questions> questions = questionRepository.findByGroupIdIdAndQuestionDepartmentDepartmentValue(groupId, e.getDepartment());
+            if (questions == null || questions.isEmpty()) {
+                // no questions for this group; skip
+                continue;
+            }
+
+            // Build Task
+            final Task task = new Task();
+            task.setId(nextId()); // ensure non-null
+            task.setEmployeeId(e);
+            task.setGroupId(g);
+            task.setCreatedBy(actor);
+            task.setUpdatedBy(actor);
+            task.setCreatedTime(now);
+            task.setUpdatedTime(now);
+            task.setFreezeTask("N");
+
+            // Initialize Set if your entity doesn't by default
+            if (task.getTaskQuestions() == null) {
+                task.setTaskQuestions(new java.util.LinkedHashSet<>()); // deterministic order
+            }
+
+            // Assign to group's PG Lead if present; else actor
+            final Users lead = (g.getPgLead() != null) ? g.getPgLead() : actor;
+            task.setAssignedTo(lead);
+
+            // Create TaskQuestions (use a guard against duplicates by question id)
+            final java.util.Set<Long> seenQ = new java.util.HashSet<>();
+            for (Questions qn : questions) {
+                if (qn == null || qn.getId() == null) continue;
+                if (!seenQ.add(qn.getId())) continue; // avoid duplicates
+
+                final TaskQuestions tq = new TaskQuestions();
+                tq.setTaskId(task);
+                tq.setQuestionId(qn);
+
+                final String def = qn.getDefaultFlag();
+                if ("yes".equalsIgnoreCase(def)) {
+                    tq.setResponse("YES");
+                    tq.setStatus("completed");
+                } else {
+                    tq.setStatus("pending");
+                }
+
+                task.getTaskQuestions().add(tq);
+            }
+            taskRepository.save(task);
+            sendTaskAssign(populateForMail(task));
+        }
+        if (dto != null) {
+            dto.setModuleId("NA");
+            dto.setSystemRemarks("Manual task creation");
+            auditTrailService.saveAuditTrail("DATA_CREATE", dto);
+        }
+    }
+
+    private void sendTaskAssign(final TaskDTO t) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                Constant c = constantRepository.findByConstant("TaskPageGL");
+                InputStream inputStream2 = new ClassPathResource("EmailTemplates/TaskAssign.html")
+                        .getInputStream();
+                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
+                String emailBody;
+                StringBuilder stringBuilder = new StringBuilder();
+                while ((emailBody = br.readLine()) != null) {
+                    stringBuilder.append(emailBody);
+                }
+                emailBody = stringBuilder.toString();
+                emailBody = emailBody.replaceFirst("@src", Constants.TASK_ASSIGN);
+                emailBody = emailBody.replaceFirst("@name", t.getAssignedTo());
+                emailBody = emailBody.replaceFirst("@taskId", t.getId());
+                emailBody = emailBody.replaceFirst("@employeeName", t.getEmployeeName());
+                emailBody = emailBody.replaceFirst("@groupId", t.getGroupName());
+                emailBody = emailBody.replaceFirst("@taskUrl", c.getConstantValue());
+                long pendingCount = t.getTotalQuestions() - t.getCompletedQuestions();
+                emailBody = emailBody.replaceFirst("@totalQuestion", String.valueOf(t.getTotalQuestions()));
+                emailBody = emailBody.replaceFirst("@pendingQuestion", String.valueOf(pendingCount));
+                emailBody = emailBody.replaceFirst("@completedQuestion", String.valueOf(t.getCompletedQuestions()));
+
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.TASK_ASSIGN,
+                        t.getAssignedToEmail().split(","), null, null, emailBody);
+                mailerService.sendHTMLMail(emailDetailsDTO);
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    private void sendTaskReAssign(final Task t, final String oldAssigned, final Long id) {
+        final String taskId = t.getId();
+        final String employeeName = t.getEmployeeId().getName();
+        final String groupName = t.getGroupId().getName();
+        final long totalQuestion = t.getTaskQuestions() == null ? 0 : t.getTaskQuestions().size();
+        final long pendingCount = t.getTaskQuestions() == null ? 0 :
+                t.getTaskQuestions().stream()
+                        .filter(q -> q.getStatus() != null && q.getStatus().equalsIgnoreCase("pending"))
+                        .count();
+        final long completedCount = totalQuestion - pendingCount;
+        final String taskUrl = constantRepository.findByConstant("TaskPageGL").getConstantValue();
+        Users u = usersRepository.getReferenceById(id);
+        CompletableFuture.runAsync(() -> {
+            try (InputStream is = new ClassPathResource("EmailTemplates/ReassignTask.html").getInputStream();
+                 BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+                StringBuilder sb = new StringBuilder();
+                for (String line; (line = br.readLine()) != null; ) sb.append(line);
+                String emailBody = sb.toString();
+                emailBody = emailBody.replace("@src", Constants.TASK_REASSIGN)
+                        .replace("@name", u.getName())
+                        .replace("@fromUser", oldAssigned)
+                        .replace("@taskId", taskId)
+                        .replace("@employeeName", employeeName)
+                        .replace("@groupId", groupName)
+                        .replace("@taskUrl", taskUrl)
+                        .replace("@totalQuestion", String.valueOf(totalQuestion))
+                        .replace("@pendingQuestion", String.valueOf(pendingCount))
+                        .replace("@completedQuestion", String.valueOf(completedCount));
+
+                EmailDetailsDTO mail = new EmailDetailsDTO(
+                        Constants.TASK_REASSIGN,
+                        u.getEmail().split(","),
+                        null, null,
+                        emailBody
+                );
+                mailerService.sendHTMLMail(mail);
+            } catch (Exception ex) {
+                mailerService.sendEmailOnException(ex);
+            }
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public void taskReminder() {
+        final LocalDate todayPlusOne = LocalDate.now().plusDays(1);
+        final List<Task> tasks = taskRepository.findAllByFreezeTask("N");
+        Map<Long, List<Task>> tasksByPgLeadId = tasks.stream()
+                .filter(t -> t != null
+                        && t.getGroupId() != null
+                        && t.getGroupId().getPgLead() != null
+                        && t.getGroupId().getPgLead().getId() != null)
+                .collect(Collectors.groupingBy(t -> t.getGroupId().getPgLead().getId()));
+        tasksByPgLeadId.forEach((leadId, taskList) -> {
+            Users pgLead = taskList.get(0).getGroupId().getPgLead();
+
+            List<String> pendingForLead = new ArrayList<>();
+            for (Task task : taskList) {
+                if (task == null || task.getEmployeeId() == null) continue;
+
+                LocalDate doj = task.getEmployeeId().getDate();
+                if (doj == null) continue;
+
+                Collection<TaskQuestions> tqs = task.getTaskQuestions();
+                if (tqs == null || tqs.isEmpty()) continue;
+
+                boolean dueTomorrow = tqs.stream()
+                        .filter(Objects::nonNull)
+                        .filter(tq -> !"completed".equalsIgnoreCase(tq.getStatus()))
+                        .anyMatch(tq -> {
+                            LocalDate due = computeDue(doj, tq);
+                            return due != null && due.isEqual(todayPlusOne);
+                        });
+
+                if (dueTomorrow) {
+                    pendingForLead.add(task.getId());
+                }
+            }
+            if (!pendingForLead.isEmpty()) {
+                sendTaskIncompleteReminder(pgLead.getName(), pgLead.getEmail(), pendingForLead);
+            }
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public void escalationMail() {
+        Constant c = constantRepository.findByConstant("Admins");
+        final LocalDate todayPlusOne = LocalDate.now().plusDays(2);
+        final List<Task> tasks = taskRepository.findAllByFreezeTask("N");
+        for (Task task : tasks) {
+            if (task == null || task.getEmployeeId() == null) continue;
+            final LocalDate doj = task.getEmployeeId().getDate();
+            if (doj == null) continue;
+            final Collection<TaskQuestions> tqs = task.getTaskQuestions();
+            if (tqs == null || tqs.isEmpty()) continue;
+            for (TaskQuestions tq : tqs) {
+                if (tq == null) continue;
+                if ("Completed".equals(tq.getStatus())) continue;
+                final LocalDate due = computeDue(doj, tq);
+                if (due != null && due.isEqual(todayPlusOne)) {
+                    break;
+                } else {
+                    if (!CommonUtls.isCompletlyEmpty(task.getGroupId().getEgLead().getName())) {
+                        sendEscalationMail(task.getGroupId().getEgLead().getEmail().split(","), populateForMail(task));
+                    } else {
+                        sendEscalationMail(c.getConstantValue().split(","), populateForMail(task));
+                    }
+                }
+            }
+        }
+    }
+
+    private void sendTaskIncompleteReminder(final String name, final String email, final List<String> t) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                InputStream inputStream2 = new ClassPathResource("EmailTemplates/TaskInCompleteReminder.html")
+                        .getInputStream();
+                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
+                String emailBody;
+                StringBuilder stringBuilder = new StringBuilder();
+                while ((emailBody = br.readLine()) != null) {
+                    stringBuilder.append(emailBody);
+                }
+                emailBody = stringBuilder.toString();
+                emailBody = emailBody.replace("@src", Constants.TASK_PENDING);
+                emailBody = emailBody.replace("@recipientName", name);
+                String li = t.stream()
+                        .map(ts -> "<li style=\"margin:0 0 6px 0; mso-special-format:bullet;\">"
+                                + HtmlUtils.htmlEscape(ts) + "</li>")
+                        .collect(Collectors.joining());
+                emailBody = emailBody.replace("@pendingTasksList", li);
+
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.TASK_PENDING,
+                        email.split(","), null, null, emailBody);
+                mailerService.sendHTMLMail(emailDetailsDTO);
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    private void sendEscalationMail(final String[] u, final TaskDTO t) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                Constant c = constantRepository.findByConstant("TaskPageGL");
+                InputStream inputStream2 = new ClassPathResource("EmailTemplates/EscalationMail.html")
+                        .getInputStream();
+                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream2));
+                String emailBody;
+                StringBuilder stringBuilder = new StringBuilder();
+                while ((emailBody = br.readLine()) != null) {
+                    stringBuilder.append(emailBody);
+                }
+                emailBody = stringBuilder.toString();
+                emailBody = emailBody.replaceFirst("@src", Constants.TASK_ESCALATED);
+                emailBody = emailBody.replaceFirst("@taskId", t.getId());
+                emailBody = emailBody.replaceFirst("@employeeName", t.getEmployeeName());
+                emailBody = emailBody.replaceFirst("@groupId", t.getGroupName());
+                emailBody = emailBody.replaceFirst("@taskUrl", c.getConstantValue());
+                long pendingCount = t.getTotalQuestions() - t.getCompletedQuestions();
+                emailBody = emailBody.replaceFirst("@totalQuestion", String.valueOf(t.getTotalQuestions()));
+                emailBody = emailBody.replaceFirst("@pendingQuestion", String.valueOf(pendingCount));
+                emailBody = emailBody.replaceFirst("@completedQuestion", String.valueOf(t.getCompletedQuestions()));
+
+                EmailDetailsDTO emailDetailsDTO = new EmailDetailsDTO(Constants.TASK_ESCALATED,
+                        u, null, null, emailBody);
+                mailerService.sendHTMLMail(emailDetailsDTO);
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+
 }

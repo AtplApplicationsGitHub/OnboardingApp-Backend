@@ -44,6 +44,9 @@ public class Groups implements java.io.Serializable {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "escalation_group_lead", referencedColumnName = "id", nullable = true)
 	private Users egLead;
+
+	@Column(name = "auto_assign")
+	private String autoAssign;
 	
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "updated_time", nullable = true, length = 19)
@@ -65,5 +68,12 @@ public class Groups implements java.io.Serializable {
 		this.id = id;
 	}
 
+
+	@Override
+	public String toString() {
+		return (name == null ? "" : ", Name = " + name)
+				+ (pgLead.getName() == null ? "" : ", Primary Group Lead = " + pgLead.getName())
+				+ (egLead.getName() == null ? "" : ", Escalation Group Lead = " + egLead.getName());
+	}
 
 }
