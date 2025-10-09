@@ -398,40 +398,54 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     Page<TaskProjection> findArchievedEmployeeTaskSummariesWithSearch(String keyword, Pageable pageable);
 
 
-    @Query(value = "SELECT t.* " +
-            "FROM task t " +
-            "LEFT JOIN employee e ON e.id = t.employee_id " +
-            "LEFT JOIN groups g   ON g.id = t.group_id " +
-            "LEFT JOIN task_questions tq ON tq.task_id = t.id " +   // <-- correct table.column names
-            "WHERE t.assigned_to = :id " +
-            "AND (:keyword IS NULL OR :keyword = '' OR " +
-            "      e.name       ILIKE CONCAT('%', :keyword, '%') OR " +
-            "      e.role       ILIKE CONCAT('%', :keyword, '%') OR " +
-            "      e.department ILIKE CONCAT('%', :keyword, '%') OR " +
-            "      e.level      ILIKE CONCAT('%', :keyword, '%') OR " +
-            "      CAST(t.id AS TEXT) ILIKE CONCAT('%', :keyword, '%') OR " +
-            "      g.name       ILIKE CONCAT('%', :keyword, '%') " +
-            ") " +
-            "GROUP BY t.id, e.id, g.id " +
-            "ORDER BY t.created_time DESC",
-            countQuery = "SELECT COUNT(DISTINCT t.id) " +
-                    "FROM task t " +
-                    "LEFT JOIN employee e ON e.id = t.employee_id " +
-                    "LEFT JOIN groups g   ON g.id = t.group_id " +
-                    "LEFT JOIN task_questions tq ON tq.task_id = t.id " +
-                    "WHERE t.assigned_to = :id " +
-                    "AND (:keyword IS NULL OR :keyword = '' OR " +
-                    "      e.name       ILIKE CONCAT('%', :keyword, '%') OR " +
-                    "      e.role       ILIKE CONCAT('%', :keyword, '%') OR " +
-                    "      e.department ILIKE CONCAT('%', :keyword, '%') OR " +
-                    "      e.level      ILIKE CONCAT('%', :keyword, '%') OR " +
-                    "      CAST(t.id AS TEXT) ILIKE CONCAT('%', :keyword, '%') OR " +
-                    "      g.name       ILIKE CONCAT('%', :keyword, '%') " +
-                    ")",
-            nativeQuery = true)
+    @Query(
+            value = """
+    SELECT x.*
+    FROM (
+        SELECT DISTINCT ON (t.id) t.*
+        FROM task t
+        LEFT JOIN employee e ON e.id = t.employee_id
+        LEFT JOIN groups   g ON g.id = t.group_id
+        LEFT JOIN task_questions tq ON tq.task_id = t.id
+        WHERE t.assigned_to = :id
+          AND (
+              :keyword IS NULL OR :keyword = '' OR
+              e.name       ILIKE CONCAT('%', :keyword, '%') OR
+              e.role       ILIKE CONCAT('%', :keyword, '%') OR
+              e.department ILIKE CONCAT('%', :keyword, '%') OR
+              e.level      ILIKE CONCAT('%', :keyword, '%') OR
+              CAST(t.id AS TEXT) ILIKE CONCAT('%', :keyword, '%') OR
+              g.name       ILIKE CONCAT('%', :keyword, '%')
+          )
+        -- DISTINCT ON picks the first row per t.id according to this order:
+        ORDER BY t.id, t.created_time DESC
+    ) x
+    -- Final ordering for the page:
+    ORDER BY x.created_time DESC
+    """,
+            countQuery = """
+    SELECT COUNT(DISTINCT t.id)
+    FROM task t
+    LEFT JOIN employee e ON e.id = t.employee_id
+    LEFT JOIN groups   g ON g.id = t.group_id
+    LEFT JOIN task_questions tq ON tq.task_id = t.id
+    WHERE t.assigned_to = :id
+      AND (
+          :keyword IS NULL OR :keyword = '' OR
+          e.name       ILIKE CONCAT('%', :keyword, '%') OR
+          e.role       ILIKE CONCAT('%', :keyword, '%') OR
+          e.department ILIKE CONCAT('%', :keyword, '%') OR
+          e.level      ILIKE CONCAT('%', :keyword, '%') OR
+          CAST(t.id AS TEXT) ILIKE CONCAT('%', :keyword, '%') OR
+          g.name       ILIKE CONCAT('%', :keyword, '%')
+      )
+    """,
+            nativeQuery = true
+    )
     Page<Task> findAllBySearch(@Param("keyword") String keyword,
                                @Param("id") Long id,
                                Pageable pageable);
+
 
 
 
