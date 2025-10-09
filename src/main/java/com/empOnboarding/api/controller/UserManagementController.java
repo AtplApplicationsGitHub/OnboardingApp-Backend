@@ -44,7 +44,7 @@ public class UserManagementController {
 	}
 
 	@PostMapping("/saveUserList")
-	public boolean saveUser(@RequestBody List<UsersDTO> userDto, CommonDTO dto,
+	public boolean saveUserList(@RequestBody List<UsersDTO> userDto, CommonDTO dto,
 							HttpServletRequest request) {
 		try {
 			dto.setIpAddress(request.getRemoteAddr());
