@@ -24,12 +24,19 @@ public enum Constants {
 	public static final String LOOKUP_ITEMS = "LookUp Items";
 	public static final String LAB_ADDED = "The following Labs were added: ";
 	public static final String LAB_REMOVED = "The following Labs were removed: ";
+	public static final String SUCCESS_RESULT_MESSAGE = "success";
+	public static final String FAILURE_RESULT_MESSAGE = "failure";
 
 //	Mail Subjects
 
 	public static final String WELCOME_MAIL_NOTE_FOR_NEW_EMPLOYEE = "Welcome to Sailife";
 	public static final String TASK_ASSIGN = "New Task Assigned";
 	public static final String TASK_REASSIGN = "Task Reassigned";
+	public static final String TASK_PENDING = "Pending Onboarding Tasks";
+	public static final String TASK_ESCALATED = "Escalated Tasks";
+	public static final String EMPLOYEE_LOGIN = "Employee Login";
+
+
 
 
 

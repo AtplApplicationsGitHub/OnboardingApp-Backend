@@ -124,7 +124,6 @@ public class EmployeeQuestionService {
         if (task == null || task.getEmployeeId() == null) {
             return new ArrayList<>();
         }
-
         Long employeeId = task.getEmployeeId().getId();
         return getAllEmployeeQuestionsArch(employeeId);
     }
