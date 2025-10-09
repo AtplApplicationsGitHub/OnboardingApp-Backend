@@ -44,11 +44,24 @@ public class UserManagementService {
 
 	public Boolean createUser(UsersDTO userDto, CommonDTO dto) throws IOException {
 		Users user = new Users(null, userDto.getName(), userDto.getEmail(),
-				passwordEncoder.encode(userDto.getPassword()), userDto.getRole(), Constants.Y,userDto.getLoginType(), new Date(),
+				passwordEncoder.encode(userDto.getPassword()), userDto.getRole(), Constants.Y,"Default", new Date(),
 				new Date());
 		usersRepository.save(user);
 		dto.setSystemRemarks(user.toString());
 		dto.setModuleId(user.getName());
+		auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
+		return true;
+	}
+
+	public Boolean createUserList(List<UsersDTO> userDto, CommonDTO dto) throws IOException {
+		for(UsersDTO users: userDto){
+			Users user = new Users(null, users.getName(), users.getEmail(),
+					null, users.getRole(), Constants.Y,"LDAP", new Date(),
+					new Date());
+			usersRepository.save(user);
+		}
+		dto.setSystemRemarks("Users has been added");
+		dto.setModuleId("User Management");
 		auditTrailService.saveAuditTrail(Constants.DATA_INSERT.getValue(), dto);
 		return true;
 	}
