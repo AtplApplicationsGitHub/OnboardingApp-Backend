@@ -116,38 +116,72 @@ public class LDAPService {
 
     public JSONObject loadUsersFromAD(List<String> list) {
         JSONObject result = new JSONObject();
-        result.put("successUsers", new ArrayList<>());
+        result.put("successUsers", new ArrayList<UsersDTO>());
         List<UsersDTO> userList = new ArrayList<>();
+
         try {
-            JSONObject json = new JSONObject();
-            loadUserFromAD(list);
-            if (!json.isEmpty()) {
-                String message = "";
-                List<String> userNotFoundList = (List<String>) json.get("failureUserList");
-                if (!userNotFoundList.isEmpty())
-                    message += "User not found : " + userNotFoundList + "<br>";
-                List<LinkedHashMap<String, Object>> userJSONList = (List<LinkedHashMap<String, Object>>) json.get("successUserInfoList");
-                for (LinkedHashMap<String, Object> jsonObject : userJSONList) {
-                    UsersDTO user = populateADJSONToUserDTO(jsonObject);
-                    if (null != user) {
-                        user.setLoginType("LDAP");
-                        userList.add(user);
-                    } else {
-                        result.put("successUsers", userList);
-                        result.put("message", message);
-                        return result;
-                    }
+            JSONObject json = loadUserFromAD(list);
+            if (json.containsKey("exceptionCustomMsg") || json.containsKey("statusCode") || json.containsKey("errorBody")) {
+                StringBuilder msg = new StringBuilder();
+                if (json.get("exceptionCustomMsg") != null) {
+                    msg.append(json.get("exceptionCustomMsg"));
                 }
-                userJSONList.clear();
+                if (json.get("statusCode") != null) {
+                    if (msg.length() > 0) msg.append(" | ");
+                    msg.append("status=").append(json.get("statusCode"));
+                }
+                if (json.get("errorBody") != null && json.get("errorBody")!="") {
+                    if (msg.length() > 0) msg.append(" | ");
+                    msg.append("body=").append(json.get("errorBody"));
+                }
+                result.put("message", msg.toString());
+                return result; // successUsers is already an empty list
+            }
+
+            if (!json.isEmpty()) {
+                StringBuilder message = new StringBuilder();
+
+                @SuppressWarnings("unchecked")
+                List<String> userNotFoundList = (List<String>) json.get("failureUserList");
+                if (userNotFoundList != null && !userNotFoundList.isEmpty()) {
+                    message.append("User not found : ").append(userNotFoundList).append("<br>");
+                }
+
+                @SuppressWarnings("unchecked")
+                List<LinkedHashMap<String, Object>> userJSONList =
+                        (List<LinkedHashMap<String, Object>>) json.get("successUserInfoList");
+
+                if (userJSONList != null) {
+                    for (LinkedHashMap<String, Object> jsonObject : userJSONList) {
+                        UsersDTO user = populateADJSONToUserDTO(jsonObject);
+                        if (user != null) {
+                            user.setLoginType("LDAP");
+                            userList.add(user);
+                        } else {
+                            // mapping failed for one user: return what we have with a message
+                            result.put("successUsers", userList);
+                            result.put("message", (message.length() > 0 ? message + " " : "")
+                                    + "One or more users could not be mapped");
+                            return result;
+                        }
+                    }
+                    userJSONList.clear();
+                }
+
                 result.put("successUsers", userList);
-                result.put("message", message);
+                result.put("message", message.toString());
+            } else {
+                // No payload from LDAP; surface that in your single message field
+                result.put("message", "Empty response from LDAP");
             }
         } catch (Exception e) {
             result.put("message", e.getMessage());
             return result;
         }
+
         return result;
     }
+
 
     public UsersDTO populateADJSONToUserDTO(LinkedHashMap<String, Object> json) {
         UsersDTO dto = new UsersDTO();
