@@ -34,6 +34,6 @@ public class LDAPContoller {
 
     @PostMapping("/loadUsersFromAD")
     public JSONObject loadUsersFromAD(@RequestBody List<String> list) {
-        return  ldapService.loadUsersFromAD(list);
+        return ldapService.loadUsersFromAD(list);
     }
 }
